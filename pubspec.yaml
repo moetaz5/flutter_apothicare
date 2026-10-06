@@ -9,6 +9,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
   
   # UI & Icons
   cupertino_icons: ^1.0.6
@@ -40,7 +42,7 @@ dependencies:
   # Device Hardware & Utilities
   mobile_scanner: 7.0.0
   image_picker: ^1.0.7
-  intl: ^0.19.0
+  intl: ^0.20.3
   flutter_animate: ^4.5.0
   lucide_icons_flutter: ^3.1.21
   qr_flutter: ^4.1.0

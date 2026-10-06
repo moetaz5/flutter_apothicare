@@ -23,6 +23,8 @@ import 'package:google_maps_flutter_platform_interface/google_maps_flutter_platf
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 
+import 'package:flutter_localizations/flutter_localizations.dart';
+
 import 'core/providers/admin_provider.dart';
 import 'features/admin/presentation/home_admin_screen.dart';
 import 'features/splash/presentation/splash_screen.dart';
@@ -85,6 +87,19 @@ class ApothicareApp extends StatelessWidget {
         title: 'Apothicare',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: const [
+          Locale('fr', 'FR'),
+          Locale('fr'),
+          Locale('en', 'US'),
+          Locale('en'),
+          Locale('ar'),
+        ],
+        locale: const Locale('fr', 'FR'),
         routes: AppRoutes.routes,
         home: const SplashScreen(),
       ),

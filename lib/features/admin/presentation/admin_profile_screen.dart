@@ -445,37 +445,49 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                         Row(
                           children: [
                             // Supprimer mon compte
-                            ElevatedButton.icon(
-                              onPressed: _handleDeleteAccount,
-                              icon: const Icon(LucideIcons.userX, size: 15),
-                              label: const Text('Supprimer mon compte', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFC62828),
-                                foregroundColor: Colors.white,
-                                elevation: 0,
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            Expanded(
+                              flex: 3,
+                              child: ElevatedButton.icon(
+                                onPressed: _handleDeleteAccount,
+                                icon: const Icon(LucideIcons.userX, size: 14),
+                                label: const FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text('Supprimer mon compte', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFFC62828),
+                                  foregroundColor: Colors.white,
+                                  elevation: 0,
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                ),
                               ),
                             ),
-                            const Spacer(),
+                            const SizedBox(width: 10),
 
                             // Enregistrer
-                            ElevatedButton(
-                              onPressed: _isSaving ? null : _submitForm,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF00897B),
-                                foregroundColor: Colors.white,
-                                elevation: 0,
-                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            Expanded(
+                              flex: 2,
+                              child: ElevatedButton(
+                                onPressed: _isSaving ? null : _submitForm,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF00897B),
+                                  foregroundColor: Colors.white,
+                                  elevation: 0,
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                ),
+                                child: _isSaving
+                                    ? const SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                      )
+                                    : const FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        child: Text('Enregistrer', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700)),
+                                      ),
                               ),
-                              child: _isSaving
-                                  ? const SizedBox(
-                                      width: 18,
-                                      height: 18,
-                                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                                    )
-                                  : const Text('Enregistrer', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
                             ),
                           ],
                         ),
