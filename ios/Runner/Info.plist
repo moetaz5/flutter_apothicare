@@ -66,10 +66,14 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>io.flutter.embedded_views_preview</key>
+	<true/>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Apothicare a besoin de votre position pour afficher les pharmacies de garde les plus proches.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>Apothicare utilise votre position pour vous guider vers la pharmacie de garde.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>Apothicare utilise votre position pour le guidage GPS vers la pharmacie de garde.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Apothicare utilise la caméra pour scanner les QR codes et ordonnances.</string>
 	<key>NSPhotoLibraryUsageDescription</key>

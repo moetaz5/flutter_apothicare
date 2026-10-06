@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "../../../.."
+		},
+		{
+			"path": "../../../../../vf-apothicare - Copy"
+		}
+	],
+	"settings": {
+		"powershell.cwd": "flutter_apothicare",
+		"java.configuration.updateBuildConfiguration": "interactive"
+	}
+}
