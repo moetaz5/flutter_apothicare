@@ -799,12 +799,34 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
   }
 
   void _onBottomNavTapped(int index) {
+    final user = context.read<AuthProvider>().currentUser;
+    final int roleId = user?.idRole ?? 0;
+    final bool isPharmacien = user?.isPharmacien == true ||
+        user?.isJeunePharmacie == true ||
+        roleId == 2 ||
+        roleId == 4 ||
+        roleId == 7 ||
+        roleId == 8;
+    final bool isAdmin = user?.isAdmin == true || roleId == 1;
+
     if (index == 0) {
-      Navigator.pushReplacementNamed(context, AppRoutes.homePatient);
+      if (isAdmin) {
+        Navigator.pushReplacementNamed(context, AppRoutes.homeAdmin);
+      } else if (isPharmacien) {
+        Navigator.pushReplacementNamed(context, AppRoutes.homePharmacien);
+      } else {
+        Navigator.pushReplacementNamed(context, AppRoutes.homePatient);
+      }
     } else if (index == 1) {
       Navigator.pushReplacementNamed(context, AppRoutes.actualites);
     } else if (index == 2) {
-      Navigator.pushReplacementNamed(context, AppRoutes.profile);
+      if (isAdmin) {
+        Navigator.pushReplacementNamed(context, AppRoutes.adminProfile);
+      } else if (isPharmacien) {
+        Navigator.pushReplacementNamed(context, AppRoutes.pharmacienProfile);
+      } else {
+        Navigator.pushReplacementNamed(context, AppRoutes.profile);
+      }
     } else if (index == 3) {
       _showLogoutDialog();
     }
@@ -1441,10 +1463,25 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
                 if (Navigator.canPop(context)) {
                   Navigator.pop(context);
                 } else {
-                  Navigator.pushReplacementNamed(
-                    context,
-                    isAuth ? AppRoutes.homePatient : AppRoutes.signIn,
-                  );
+                  final user = context.read<AuthProvider>().currentUser;
+                  final int roleId = user?.idRole ?? 0;
+                  final bool isPharmacien = user?.isPharmacien == true ||
+                      user?.isJeunePharmacie == true ||
+                      roleId == 2 ||
+                      roleId == 4 ||
+                      roleId == 7 ||
+                      roleId == 8;
+                  final bool isAdmin = user?.isAdmin == true || roleId == 1;
+
+                  if (!isAuth) {
+                    Navigator.pushReplacementNamed(context, AppRoutes.signIn);
+                  } else if (isAdmin) {
+                    Navigator.pushReplacementNamed(context, AppRoutes.homeAdmin);
+                  } else if (isPharmacien) {
+                    Navigator.pushReplacementNamed(context, AppRoutes.homePharmacien);
+                  } else {
+                    Navigator.pushReplacementNamed(context, AppRoutes.homePatient);
+                  }
                 }
               },
               borderRadius: BorderRadius.circular(30),
