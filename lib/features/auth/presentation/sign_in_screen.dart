@@ -96,12 +96,20 @@ class _SignInScreenState extends State<SignInScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
+    final mediaQuery = MediaQuery.of(context);
+    final screenHeight = mediaQuery.size.height;
+    final topPadding = mediaQuery.padding.top;
+    final bottomPadding = mediaQuery.padding.bottom;
+
+    // Responsive sizing helpers
+    final isSmallScreen = screenHeight < 760;
+    final topLogoSize = isSmallScreen ? 48.0 : 56.0;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7FAF4),
       body: Stack(
         children: [
-          // Background Gradient Overlay
+          // Background Gradient Overlay (full screen)
           Positioned.fill(
             child: Container(
               decoration: const BoxDecoration(
@@ -118,387 +126,365 @@ class _SignInScreenState extends State<SignInScreen> {
             ),
           ),
 
-          // Ambient Decorative Blurred Glows (Animated)
+          // Ambient Decorative Blurred Glows
           Positioned(
-            top: -50,
-            right: -50,
+            top: -30,
+            right: -30,
+            child: Container(
+              width: 220,
+              height: 220,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.primaryGreen.withValues(alpha: 0.16),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: -60,
+            left: -50,
             child: Container(
               width: 240,
               height: 240,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppColors.primaryGreen.withValues(alpha: 0.18),
+                color: const Color(0xFF244082).withValues(alpha: 0.08),
               ),
-            )
-                .animate(onPlay: (controller) => controller.repeat(reverse: true))
-                .scale(begin: const Offset(1, 1), end: const Offset(1.15, 1.15), duration: 4.seconds),
-          ),
-          Positioned(
-            bottom: -80,
-            left: -60,
-            child: Container(
-              width: 280,
-              height: 280,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: const Color(0xFF244082).withValues(alpha: 0.10),
-              ),
-            )
-                .animate(onPlay: (controller) => controller.repeat(reverse: true))
-                .scale(begin: const Offset(1, 1), end: const Offset(1.12, 1.12), duration: 5.seconds),
+            ),
           ),
 
-          SafeArea(
-            child: Column(
-              children: [
-                // Top Hero Section
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                  child: Column(
-                    children: [
-                      // Apothicare Logo container with glow & pop animation
-                      Container(
-                        width: 64,
-                        height: 64,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: Colors.white, width: 2),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.primaryGreen.withValues(alpha: 0.22),
-                              blurRadius: 24,
-                              offset: const Offset(0, 8),
-                            ),
-                          ],
-                        ),
-                        child: Center(
-                          child: Image.asset(
-                            'assets/images/logo1.png',
-                            width: 44,
-                            height: 44,
-                            fit: BoxFit.contain,
+          // Main scrollable content stretching across full screen
+          LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                physics: const ClampingScrollPhysics(),
+                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: IntrinsicHeight(
+                    child: Column(
+                      children: [
+                        // ─── TOP HEADER SECTION (Aware of Notch / Dynamic Island) ───
+                        Padding(
+                          padding: EdgeInsets.only(
+                            top: topPadding + (isSmallScreen ? 6 : 12),
+                            left: 20,
+                            right: 20,
+                            bottom: isSmallScreen ? 12 : 16,
                           ),
-                        ),
-                      )
-                          .animate()
-                          .scale(duration: 500.ms, curve: Curves.easeOutBack)
-                          .fadeIn(duration: 400.ms)
-                          .shimmer(delay: 600.ms, duration: 1200.ms, color: Colors.white.withValues(alpha: 0.5)),
-
-                      const SizedBox(height: 12),
-                      const Text(
-                        'Bienvenue sur Apothicare !',
-                        style: TextStyle(
-                          fontSize: 23,
-                          fontWeight: FontWeight.w900,
-                          color: AppColors.forestGreen,
-                          letterSpacing: -0.5,
-                        ),
-                        textAlign: TextAlign.center,
-                      )
-                          .animate()
-                          .fadeIn(delay: 200.ms, duration: 400.ms)
-                          .slideY(begin: 0.3, end: 0, delay: 200.ms, duration: 400.ms, curve: Curves.easeOutCubic),
-
-                      const SizedBox(height: 4),
-                      RichText(
-                        textAlign: TextAlign.center,
-                        text: const TextSpan(
-                          style: TextStyle(
-                            fontSize: 12.5,
-                            color: AppColors.textSubtitle,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          children: [
-                            TextSpan(text: 'Développée par le '),
-                            TextSpan(
-                              text: 'CNOPT',
-                              style: TextStyle(
-                                color: AppColors.primaryGreen,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                            TextSpan(text: ' au service des citoyens'),
-                          ],
-                        ),
-                      )
-                          .animate()
-                          .fadeIn(delay: 300.ms, duration: 400.ms),
-
-                      const SizedBox(height: 14),
-
-                      // Quick Action: Trouver la pharmacie ouverte (Animated pill)
-                      InkWell(
-                        onTap: () {
-                          Navigator.pushNamed(context, AppRoutes.gardesMap);
-                        },
-                        borderRadius: BorderRadius.circular(50),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(50),
-                            border: Border.all(color: AppColors.primaryGreen, width: 1.5),
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.primaryGreen.withValues(alpha: 0.22),
-                                blurRadius: 16,
-                                offset: const Offset(0, 5),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
+                          child: Column(
                             children: [
+                              // Apothicare Logo with sleek rounded badge & shadow
                               Container(
-                                padding: const EdgeInsets.all(4),
+                                width: topLogoSize,
+                                height: topLogoSize,
                                 decoration: BoxDecoration(
-                                  color: AppColors.primaryGreen.withValues(alpha: 0.12),
-                                  shape: BoxShape.circle,
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: Colors.white, width: 2),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: AppColors.primaryGreen.withValues(alpha: 0.20),
+                                      blurRadius: 18,
+                                      offset: const Offset(0, 5),
+                                    ),
+                                  ],
                                 ),
-                                child: const Icon(LucideIcons.mapPin, size: 14, color: AppColors.primaryGreen),
-                              ),
-                              const SizedBox(width: 8),
-                              const Text(
-                                'Trouvez la pharmacie ouverte',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.forestGreen,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              const Icon(LucideIcons.chevronRight, size: 15, color: AppColors.primaryGreen),
-                            ],
-                          ),
-                        ),
-                      )
-                          .animate()
-                          .fadeIn(delay: 400.ms, duration: 400.ms)
-                          .slideY(begin: 0.2, end: 0, delay: 400.ms, duration: 400.ms),
-                    ],
-                  ),
-                ),
-
-                // Bottom Floating Sheet Card
-                Expanded(
-                  child: Container(
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-                      border: Border.all(color: Colors.white, width: 1.5),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF244082).withValues(alpha: 0.08),
-                          blurRadius: 30,
-                          offset: const Offset(0, -10),
-                        ),
-                      ],
-                    ),
-                    child: SingleChildScrollView(
-                      physics: const BouncingScrollPhysics(),
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Handle pill
-                          Center(
-                            child: Container(
-                              width: 40,
-                              height: 4.5,
-                              decoration: BoxDecoration(
-                                color: AppColors.borderGray,
-                                borderRadius: BorderRadius.circular(3),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 18),
-
-                          if (!_isForgotPassword) ...[
-                            const Text(
-                              'Connexion',
-                              style: TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.textPrimary,
-                              ),
-                            )
-                                .animate()
-                                .fadeIn(duration: 300.ms)
-                                .slideX(begin: -0.1, end: 0, duration: 300.ms),
-                            const SizedBox(height: 4),
-                            const Text(
-                              'Connectez-vous à votre espace santé',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: AppColors.textMuted,
-                              ),
-                            )
-                                .animate()
-                                .fadeIn(duration: 350.ms),
-                            const SizedBox(height: 20),
-
-                            // Login Field
-                            CustomTextField(
-                              label: 'Login',
-                              hintText: 'Votre login ou e-mail',
-                              controller: _loginController,
-                              prefixIcon: LucideIcons.user,
-                              keyboardType: TextInputType.emailAddress,
-                            )
-                                .animate()
-                                .fadeIn(delay: 150.ms, duration: 350.ms)
-                                .slideY(begin: 0.15, end: 0, delay: 150.ms, duration: 350.ms),
-                            const SizedBox(height: 14),
-
-                            // Password Field
-                            CustomTextField(
-                              label: 'Mot de passe',
-                              hintText: 'Votre mot de passe',
-                              controller: _passwordController,
-                              prefixIcon: LucideIcons.lock,
-                              isPassword: true,
-                            )
-                                .animate()
-                                .fadeIn(delay: 250.ms, duration: 350.ms)
-                                .slideY(begin: 0.15, end: 0, delay: 250.ms, duration: 350.ms),
-                            const SizedBox(height: 8),
-
-                            // Forgot Password Link
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: TextButton(
-                                onPressed: () {
-                                  setState(() => _isForgotPassword = true);
-                                },
-                                style: TextButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
-                                  minimumSize: Size.zero,
-                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                ),
-                                child: const Text(
-                                  'Mot de passe oublié ?',
-                                  style: TextStyle(
-                                    fontSize: 12.5,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.primaryGreen,
+                                child: Center(
+                                  child: Image.asset(
+                                    'assets/images/logo1.png',
+                                    width: topLogoSize * 0.70,
+                                    height: topLogoSize * 0.70,
+                                    fit: BoxFit.contain,
                                   ),
                                 ),
-                              ),
-                            )
-                                .animate()
-                                .fadeIn(delay: 300.ms, duration: 300.ms),
-                            const SizedBox(height: 16),
+                              )
+                                  .animate()
+                                  .scale(duration: 400.ms, curve: Curves.easeOutBack)
+                                  .fadeIn(duration: 350.ms),
 
-                            // Submit Button
-                            CustomButton(
-                              text: 'Se connecter',
-                              onPressed: _handleLogin,
-                              isLoading: auth.isLoading,
-                            )
-                                .animate()
-                                .fadeIn(delay: 350.ms, duration: 350.ms)
-                                .scale(begin: const Offset(0.96, 0.96), end: const Offset(1, 1), delay: 350.ms, duration: 350.ms),
-                            const SizedBox(height: 14),
+                              SizedBox(height: isSmallScreen ? 8 : 12),
+                              Text(
+                                'Bienvenue sur Apothicare !',
+                                style: TextStyle(
+                                  fontSize: isSmallScreen ? 20 : 23,
+                                  fontWeight: FontWeight.w900,
+                                  color: AppColors.forestGreen,
+                                  letterSpacing: -0.4,
+                                ),
+                                textAlign: TextAlign.center,
+                              )
+                                  .animate()
+                                  .fadeIn(delay: 150.ms, duration: 350.ms),
 
-                            // Divider
-                            const Row(
+                              const SizedBox(height: 3),
+                              RichText(
+                                textAlign: TextAlign.center,
+                                text: const TextSpan(
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    color: AppColors.textSubtitle,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  children: [
+                                    TextSpan(text: 'Développée par le '),
+                                    TextSpan(
+                                      text: 'CNOPT',
+                                      style: TextStyle(
+                                        color: AppColors.primaryGreen,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                    TextSpan(text: ' au service des citoyens'),
+                                  ],
+                                ),
+                              )
+                                  .animate()
+                                  .fadeIn(delay: 200.ms, duration: 350.ms),
+
+                              SizedBox(height: isSmallScreen ? 10 : 14),
+
+                              // Quick Action: Trouvez la pharmacie ouverte
+                              InkWell(
+                                onTap: () {
+                                  Navigator.pushNamed(context, AppRoutes.gardesMap);
+                                },
+                                borderRadius: BorderRadius.circular(50),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8.5),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(50),
+                                    border: Border.all(
+                                      color: AppColors.primaryGreen.withValues(alpha: 0.6),
+                                      width: 1.2,
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: AppColors.primaryGreen.withValues(alpha: 0.18),
+                                        blurRadius: 14,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(LucideIcons.mapPin, size: 14, color: AppColors.primaryGreen),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        'Trouvez la pharmacie ouverte',
+                                        style: TextStyle(
+                                          fontSize: 12.5,
+                                          fontWeight: FontWeight.w800,
+                                          color: AppColors.forestGreen,
+                                        ),
+                                      ),
+                                      SizedBox(width: 5),
+                                      Icon(LucideIcons.chevronRight, size: 14, color: AppColors.primaryGreen),
+                                    ],
+                                  ),
+                                ),
+                              )
+                                  .animate()
+                                  .fadeIn(delay: 250.ms, duration: 350.ms),
+                            ],
+                          ),
+                        ),
+
+                        // ─── BOTTOM FLOATING WHITE CARD (Stretches all the way to screen bottom) ───
+                        Expanded(
+                          child: Container(
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF244082).withValues(alpha: 0.08),
+                                  blurRadius: 28,
+                                  offset: const Offset(0, -8),
+                                ),
+                              ],
+                            ),
+                            padding: EdgeInsets.fromLTRB(
+                              22,
+                              isSmallScreen ? 14 : 20,
+                              22,
+                              bottomPadding > 0 ? bottomPadding + 14 : 24,
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Expanded(child: Divider(color: AppColors.borderGray)),
-                                Padding(
-                                  padding: EdgeInsets.symmetric(horizontal: 12),
-                                  child: Text(
-                                    'ou',
-                                    style: TextStyle(
-                                      color: AppColors.textMuted,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
+                                // Handle indicator
+                                Center(
+                                  child: Container(
+                                    width: 40,
+                                    height: 4,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFE5E7EB),
+                                      borderRadius: BorderRadius.circular(2),
                                     ),
                                   ),
                                 ),
-                                Expanded(child: Divider(color: AppColors.borderGray)),
+                                SizedBox(height: isSmallScreen ? 10 : 16),
+
+                                if (!_isForgotPassword) ...[
+                                  const Text(
+                                    'Connexion',
+                                    style: TextStyle(
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.forestGreen,
+                                      letterSpacing: -0.3,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  const Text(
+                                    'Connectez-vous à votre espace santé',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: AppColors.textMuted,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  SizedBox(height: isSmallScreen ? 12 : 18),
+
+                                  // Login Field
+                                  CustomTextField(
+                                    label: 'LOGIN',
+                                    hintText: 'Votre login ou e-mail',
+                                    controller: _loginController,
+                                    prefixIcon: LucideIcons.user,
+                                    keyboardType: TextInputType.emailAddress,
+                                  ),
+                                  SizedBox(height: isSmallScreen ? 10 : 14),
+
+                                  // Password Field
+                                  CustomTextField(
+                                    label: 'MOT DE PASSE',
+                                    hintText: 'Votre mot de passe',
+                                    controller: _passwordController,
+                                    prefixIcon: LucideIcons.lock,
+                                    isPassword: true,
+                                  ),
+                                  const SizedBox(height: 6),
+
+                                  // Forgot Password Link
+                                  Align(
+                                    alignment: Alignment.centerRight,
+                                    child: TextButton(
+                                      onPressed: () {
+                                        setState(() => _isForgotPassword = true);
+                                      },
+                                      style: TextButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+                                        minimumSize: Size.zero,
+                                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                      ),
+                                      child: const Text(
+                                        'Mot de passe oublié ?',
+                                        style: TextStyle(
+                                          fontSize: 12.5,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppColors.primaryGreen,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  SizedBox(height: isSmallScreen ? 10 : 16),
+
+                                  // Submit Button
+                                  CustomButton(
+                                    text: 'Se connecter',
+                                    onPressed: _handleLogin,
+                                    isLoading: auth.isLoading,
+                                  ),
+                                  SizedBox(height: isSmallScreen ? 10 : 14),
+
+                                  // Divider
+                                  const Row(
+                                    children: [
+                                      Expanded(child: Divider(color: Color(0xFFE5E7EB))),
+                                      Padding(
+                                        padding: EdgeInsets.symmetric(horizontal: 14),
+                                        child: Text(
+                                          'ou',
+                                          style: TextStyle(
+                                            color: AppColors.textMuted,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                      Expanded(child: Divider(color: Color(0xFFE5E7EB))),
+                                    ],
+                                  ),
+                                  SizedBox(height: isSmallScreen ? 10 : 14),
+
+                                  // Create Account
+                                  CustomButton(
+                                    text: 'Créer un compte patient',
+                                    type: CustomButtonType.outline,
+                                    onPressed: () {
+                                      Navigator.pushNamed(context, AppRoutes.signUp);
+                                    },
+                                  ),
+                                ] else ...[
+                                  // Forgot Password View
+                                  const Text(
+                                    'Mot de passe oublié ?',
+                                    style: TextStyle(
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.forestGreen,
+                                      letterSpacing: -0.3,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  const Text(
+                                    'Entrez votre e-mail pour recevoir un lien de réinitialisation',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: AppColors.textMuted,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 18),
+
+                                  CustomTextField(
+                                    label: 'ADRESSE E-MAIL',
+                                    hintText: 'Votre adresse e-mail',
+                                    controller: _resetEmailController,
+                                    prefixIcon: LucideIcons.mail,
+                                    keyboardType: TextInputType.emailAddress,
+                                  ),
+                                  const SizedBox(height: 18),
+
+                                  CustomButton(
+                                    text: 'Envoyer le lien',
+                                    onPressed: _handleSendResetEmail,
+                                    isLoading: auth.isLoading,
+                                  ),
+                                  const SizedBox(height: 12),
+
+                                  CustomButton(
+                                    text: 'Annuler',
+                                    type: CustomButtonType.dangerOutline,
+                                    onPressed: () {
+                                      setState(() => _isForgotPassword = false);
+                                    },
+                                  ),
+                                ],
                               ],
-                            )
-                                .animate()
-                                .fadeIn(delay: 400.ms, duration: 300.ms),
-                            const SizedBox(height: 12),
-
-                            // Create Account
-                            CustomButton(
-                              text: 'Créer un compte patient',
-                              type: CustomButtonType.outline,
-                              onPressed: () {
-                                Navigator.pushNamed(context, AppRoutes.signUp);
-                              },
-                            )
-                                .animate()
-                                .fadeIn(delay: 450.ms, duration: 350.ms),
-                          ] else ...[
-                            // Forgot Password View
-                            const Text(
-                              'Mot de passe oublié ?',
-                              style: TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.textPrimary,
-                              ),
-                            )
-                                .animate()
-                                .fadeIn(duration: 300.ms),
-                            const SizedBox(height: 4),
-                            const Text(
-                              'Entrez votre e-mail pour recevoir un lien de réinitialisation',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: AppColors.textMuted,
-                              ),
-                            )
-                                .animate()
-                                .fadeIn(duration: 350.ms),
-                            const SizedBox(height: 20),
-
-                            CustomTextField(
-                              label: 'Adresse e-mail',
-                              hintText: 'Votre adresse e-mail',
-                              controller: _resetEmailController,
-                              prefixIcon: LucideIcons.mail,
-                              keyboardType: TextInputType.emailAddress,
-                            )
-                                .animate()
-                                .fadeIn(delay: 150.ms, duration: 350.ms),
-                            const SizedBox(height: 20),
-
-                            CustomButton(
-                              text: 'Envoyer le lien',
-                              onPressed: _handleSendResetEmail,
-                              isLoading: auth.isLoading,
-                            )
-                                .animate()
-                                .fadeIn(delay: 250.ms, duration: 350.ms),
-                            const SizedBox(height: 10),
-
-                            CustomButton(
-                              text: 'Annuler',
-                              type: CustomButtonType.dangerOutline,
-                              onPressed: () {
-                                setState(() => _isForgotPassword = false);
-                              },
-                            )
-                                .animate()
-                                .fadeIn(delay: 300.ms, duration: 350.ms),
-                          ],
-                        ],
-                      ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  )
-                      .animate()
-                      .fadeIn(duration: 350.ms)
-                      .slideY(begin: 0.15, end: 0, duration: 400.ms, curve: Curves.easeOutCubic),
+                  ),
                 ),
-              ],
-            ),
+              );
+            },
           ),
         ],
       ),
