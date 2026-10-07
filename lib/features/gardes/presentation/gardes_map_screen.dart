@@ -99,6 +99,12 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
         }
       } catch (_) {}
 
+      if (mounted) {
+        setState(() {
+          _hasLocationPermission = hasPerm;
+        });
+      }
+
       LatLng targetCenter = _tunisiaDefaultLocation;
       if (userPos != null && userPos.latitude >= 30.0 && userPos.latitude <= 38.5 && userPos.longitude >= 7.0 && userPos.longitude <= 12.5) {
         targetCenter = LatLng(userPos.latitude, userPos.longitude);

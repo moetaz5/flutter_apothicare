@@ -11,46 +11,53 @@ class CustomMapMarkerHelper {
   static ui.Image? _caduceusAssetImage;
 
   static Future<void> initMarkers() async {
-    // Load the official caduceus asset icon in high resolution for crisp rendering
-    if (_caduceusAssetImage == null) {
-      try {
-        final ByteData data = await rootBundle.load('assets/images/icone-40.png');
-        final ui.Codec codec = await ui.instantiateImageCodec(
-          data.buffer.asUint8List(),
-          targetWidth: 256,
-        );
-        final ui.FrameInfo fi = await codec.getNextFrame();
-        _caduceusAssetImage = fi.image;
-      } catch (_) {
-        // Fallback to pure vector caduceus drawing
+    try {
+      // Load the official caduceus asset icon in high resolution for crisp rendering
+      if (_caduceusAssetImage == null) {
+        try {
+          final ByteData data = await rootBundle.load('assets/images/icone-40.png');
+          final ui.Codec codec = await ui.instantiateImageCodec(
+            data.buffer.asUint8List(),
+            targetWidth: 256,
+          );
+          final ui.FrameInfo fi = await codec.getNextFrame();
+          _caduceusAssetImage = fi.image;
+        } catch (_) {
+          // Fallback to pure vector caduceus drawing
+        }
       }
+
+      dayMarker = await _createMarkerIcon(
+        mainColor: const Color(0xFF1B5E20),
+        accentColor: const Color(0xFF43A047),
+        iconColor: const Color(0xFF1B5E20),
+        isNight: false,
+        isSelected: false,
+      );
+
+      nightMarker = await _createMarkerIcon(
+        mainColor: const Color(0xFF311B92),
+        accentColor: const Color(0xFF7C3AED),
+        iconColor: const Color(0xFF4C1D95),
+        isNight: true,
+        isSelected: false,
+      );
+
+      selectedMarker = await _createMarkerIcon(
+        mainColor: const Color(0xFF004D40),
+        accentColor: const Color(0xFF00897B),
+        iconColor: const Color(0xFF004D40),
+        isNight: false,
+        isSelected: true,
+      );
+
+      userLocationMarker = await _createUserLocationIcon();
+    } catch (_) {
+      dayMarker ??= BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen);
+      nightMarker ??= BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueViolet);
+      selectedMarker ??= BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure);
+      userLocationMarker ??= BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue);
     }
-
-    dayMarker = await _createMarkerIcon(
-      mainColor: const Color(0xFF1B5E20),
-      accentColor: const Color(0xFF43A047),
-      iconColor: const Color(0xFF1B5E20),
-      isNight: false,
-      isSelected: false,
-    );
-
-    nightMarker = await _createMarkerIcon(
-      mainColor: const Color(0xFF311B92),
-      accentColor: const Color(0xFF7C3AED),
-      iconColor: const Color(0xFF4C1D95),
-      isNight: true,
-      isSelected: false,
-    );
-
-    selectedMarker = await _createMarkerIcon(
-      mainColor: const Color(0xFF004D40),
-      accentColor: const Color(0xFF00897B),
-      iconColor: const Color(0xFF004D40),
-      isNight: false,
-      isSelected: true,
-    );
-
-    userLocationMarker = await _createUserLocationIcon();
   }
 
   static Future<BitmapDescriptor> _createUserLocationIcon() async {
