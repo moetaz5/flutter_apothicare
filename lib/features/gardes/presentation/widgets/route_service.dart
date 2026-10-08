@@ -46,8 +46,9 @@ class InAppRouteService {
     String profile = 'driving', // 'driving' or 'walking'
   }) async {
     try {
+      // Query OSRM road network for accurate geometry, distance & steps
       final url = Uri.parse(
-        'https://router.project-osrm.org/route/v1/$profile/'
+        'https://router.project-osrm.org/route/v1/driving/'
         '${origin.longitude},${origin.latitude};'
         '${destination.longitude},${destination.latitude}'
         '?overview=full&geometries=geojson&steps=true',
@@ -69,7 +70,15 @@ class InAppRouteService {
           }).toList();
 
           final double distanceMeters = (route['distance'] as num?)?.toDouble() ?? 0.0;
-          final double durationSec = (route['duration'] as num?)?.toDouble() ?? 0.0;
+          final double distanceKm = distanceMeters / 1000.0;
+          final double driveDurationSec = (route['duration'] as num?)?.toDouble() ?? 0.0;
+
+          // Realistic duration calculation:
+          // - Walking: ~4.8 km/h (80 meters / min ≈ 12.5 min per km)
+          // - Driving: OSRM driving duration in seconds
+          final int calculatedDurationMin = profile == 'walking'
+              ? math.max(1, (distanceMeters / 80.0).ceil())
+              : math.max(1, (driveDurationSec / 60.0).ceil());
 
           final List<String> instructionSteps = [];
           final List<StepDetail> detailedSteps = [];
@@ -91,7 +100,7 @@ class InAppRouteService {
                 if (maneuver != null && maneuver['type'] != null) {
                   final type = maneuver['type'] as String;
                   final modifier = (maneuver['modifier'] as String?) ?? '';
-                  String text = _formatInstruction(type, modifier, name);
+                  String text = _formatInstruction(type, modifier, name, profile == 'walking');
                   if (text.isNotEmpty) {
                     instructionSteps.add(text);
                     detailedSteps.add(
@@ -112,8 +121,8 @@ class InAppRouteService {
 
           return RouteInfo(
             points: polylinePoints,
-            distanceKm: distanceMeters / 1000.0,
-            durationMinutes: (durationSec / 60.0).ceil(),
+            distanceKm: distanceKm,
+            durationMinutes: calculatedDurationMin,
             steps: instructionSteps,
             stepDetails: detailedSteps,
             summary: route['legs']?[0]?['summary'] ?? '',
@@ -125,29 +134,34 @@ class InAppRouteService {
     }
 
     // Fallback if network offline or OSRM unavailable
+    final double directDistKm = _calcDistance(origin, destination);
+    final int fallbackDurationMin = profile == 'walking'
+        ? math.max(1, (directDistKm * 1000.0 / 80.0).ceil())
+        : math.max(1, (directDistKm * 2.5).ceil());
+
     return RouteInfo(
       points: [origin, destination],
-      distanceKm: _calcDistance(origin, destination),
-      durationMinutes: (_calcDistance(origin, destination) * 2.5).ceil(),
-      steps: ['Dirigez-vous directement vers la pharmacie'],
+      distanceKm: directDistKm,
+      durationMinutes: fallbackDurationMin,
+      steps: [profile == 'walking' ? 'Marchez vers la pharmacie' : 'Dirigez-vous vers la pharmacie'],
       stepDetails: [
         StepDetail(
-          instruction: 'Dirigez-vous vers la pharmacie',
+          instruction: profile == 'walking' ? 'Marchez vers la pharmacie' : 'Dirigez-vous vers la pharmacie',
           streetName: '',
           type: 'depart',
           modifier: '',
-          distanceMeters: _calcDistance(origin, destination) * 1000,
+          distanceMeters: directDistKm * 1000,
           location: destination,
         ),
       ],
     );
   }
 
-  static String _formatInstruction(String type, String modifier, String street) {
+  static String _formatInstruction(String type, String modifier, String street, [bool isWalking = false]) {
     final streetName = street.isNotEmpty ? ' vers $street' : '';
     switch (type) {
       case 'depart':
-        return 'Départ$streetName';
+        return isWalking ? 'Départ à pied$streetName' : 'Départ en voiture$streetName';
       case 'arrive':
         return 'Vous êtes arrivé à la pharmacie !';
       case 'turn':
@@ -159,10 +173,10 @@ class InAppRouteService {
         return 'Tournez$streetName';
       case 'continue':
       case 'new name':
-        return 'Continuez tout droit$streetName';
+        return isWalking ? 'Continuez à pied$streetName' : 'Continuez tout droit$streetName';
       case 'roundabout':
       case 'rotary':
-        return 'Prenez le rond-point$streetName';
+        return isWalking ? 'Traversez le rond-point$streetName' : 'Prenez le rond-point$streetName';
       default:
         return 'Continuez$streetName';
     }

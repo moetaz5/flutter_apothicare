@@ -1895,15 +1895,15 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFDCFCE7),
+                  color: _travelMode == 'walking' ? const Color(0xFFEFF6FF) : const Color(0xFFDCFCE7),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Text(
                   durationStr,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w900,
-                    color: Color(0xFF15803D),
+                    color: _travelMode == 'walking' ? const Color(0xFF2563EB) : const Color(0xFF15803D),
                   ),
                 ),
               ),
@@ -1925,12 +1925,12 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
                         const SizedBox(width: 6),
                         const Text('•', style: TextStyle(color: Colors.grey)),
                         const SizedBox(width: 6),
-                        const Text(
-                          'Trafic fluide',
+                        Text(
+                          _travelMode == 'walking' ? 'À pied' : 'Trafic fluide',
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
-                            color: AppColors.primaryGreen,
+                            color: _travelMode == 'walking' ? const Color(0xFF2563EB) : AppColors.primaryGreen,
                           ),
                         ),
                       ],
