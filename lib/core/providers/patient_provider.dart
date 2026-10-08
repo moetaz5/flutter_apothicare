@@ -175,13 +175,32 @@ class PatientProvider extends ChangeNotifier {
           'medicaments': medicaments,
         },
       );
-      if (response.data != null && response.data['error'] != true) {
-        // Refresh patient's medicaments
+
+      bool isSuccess = false;
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        if (response.data == null) {
+          isSuccess = true;
+        } else if (response.data is Map) {
+          final map = response.data as Map;
+          if (map['error'] == true || map['error'] == 'true') {
+            isSuccess = false;
+          } else {
+            isSuccess = true;
+          }
+        } else {
+          // List, String, int, bool etc. returned from backend
+          isSuccess = true;
+        }
+      }
+
+      if (isSuccess) {
+        // Refresh patient's medicaments immediately
         await fetchMedicamentsByPatient(targetId, forceRefresh: true);
         return true;
       }
       return false;
     } catch (e) {
+      debugPrint('Error addDispensation: $e');
       return false;
     }
   }
