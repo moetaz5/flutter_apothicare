@@ -212,9 +212,19 @@ class AuthProvider extends ChangeNotifier {
       if (e.response != null) {
         final resData = e.response?.data;
         if (resData is Map && resData['message'] != null) {
-          _errorMessage = resData['message'].toString().trim();
+          final rawMsg = resData['message'].toString().trim();
+          if (rawMsg.toLowerCase().contains('identifiant') && rawMsg.toLowerCase().contains('déjà')) {
+            _errorMessage = "Cet identifiant (Date de naissance + 3 chiffres CIN) est déjà associé à un compte. Veuillez modifier la date de naissance ou les 3 chiffres CIN.";
+          } else {
+            _errorMessage = rawMsg;
+          }
         } else if (resData is Map && resData['error'] != null) {
-          _errorMessage = resData['error'].toString().trim();
+          final rawErr = resData['error'].toString().trim();
+          if (rawErr.toLowerCase().contains('identifiant') && rawErr.toLowerCase().contains('déjà')) {
+            _errorMessage = "Cet identifiant (Date de naissance + 3 chiffres CIN) est déjà associé à un compte. Veuillez modifier la date de naissance ou les 3 chiffres CIN.";
+          } else {
+            _errorMessage = rawErr;
+          }
         } else if (e.response?.statusCode == 409) {
           _errorMessage = "Ce compte ou cet e-mail est déjà enregistré.";
         } else if (e.response?.statusCode == 400) {
