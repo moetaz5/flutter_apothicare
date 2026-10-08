@@ -1,0 +1,67 @@
+{
+  "project_info": {
+    "project_number": "548867478787",
+    "project_id": "e-pharmacie-47ea8",
+    "storage_bucket": "e-pharmacie-47ea8.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:548867478787:android:6ae1e59dcfac6adecd8536",
+        "android_client_info": {
+          "package_name": "com.cnopt.apothicare"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDoxqQp1GCcJhWeTj4YXyIjblSqavnMmXM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:548867478787:android:8c9f43718e933352cd8536",
+        "android_client_info": {
+          "package_name": "tn.medicacom.epharmacie"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDoxqQp1GCcJhWeTj4YXyIjblSqavnMmXM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:548867478787:android:6ae1e59dcfac6adecd8536",
+        "android_client_info": {
+          "package_name": "com.example.flutter_apothicare"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDoxqQp1GCcJhWeTj4YXyIjblSqavnMmXM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

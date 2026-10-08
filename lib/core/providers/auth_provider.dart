@@ -44,6 +44,7 @@ class AuthProvider extends ChangeNotifier {
     _notificationPollingTimer?.cancel();
     fetchUnreadNotifications();
     NotificationService.requestPermissions();
+    NotificationService.syncFcmToken(_api);
 
     // Instant real-time WebSocket connection
     WebSocketService().connect();
