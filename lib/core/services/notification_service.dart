@@ -160,7 +160,9 @@ class NotificationService {
     final payload = response.payload;
     if (payload == null || navigatorKey?.currentState == null) return;
 
-    if (payload.contains('actualite')) {
+    if (payload.contains('message') || payload.contains('chat')) {
+      navigatorKey!.currentState!.pushNamed('/messagerie');
+    } else if (payload.contains('actualite')) {
       navigatorKey!.currentState!.pushNamed('/actualites');
     } else if (payload.contains('observance') || payload.contains('dispensation')) {
       navigatorKey!.currentState!.pushNamed('/observance');

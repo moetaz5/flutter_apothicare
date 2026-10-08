@@ -14,13 +14,17 @@ class AuthProvider extends ChangeNotifier {
   bool _isLoading = false;
   String? _errorMessage;
   int _unreadNotifications = 0;
+  int _unreadMessages = 0;
   Timer? _notificationPollingTimer;
   bool _hasInitialFetchDone = false;
+  bool _hasInitialMessageFetchDone = false;
 
   UserModel? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   int get unreadNotifications => _unreadNotifications;
+  int get unreadMessages => _unreadMessages;
+  int get totalUnreadAll => _unreadNotifications + _unreadMessages;
   bool get isAuthenticated => _currentUser != null && StorageService.getToken() != null;
 
   AuthProvider() {
@@ -50,6 +54,8 @@ class AuthProvider extends ChangeNotifier {
     _notificationPollingTimer?.cancel();
     _notificationPollingTimer = null;
     _hasInitialFetchDone = false;
+    _hasInitialMessageFetchDone = false;
+    _unreadMessages = 0;
   }
 
   bool _isFetchingNotifications = false;
@@ -300,11 +306,12 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // Fetch Notification Count
+  // Fetch Notification Count & Unread Messages
   Future<void> fetchUnreadNotifications() async {
     if (_currentUser?.id == null || _isFetchingNotifications) return;
     _isFetchingNotifications = true;
     try {
+      // 1. Check Actualités notifications
       final response = await _api.post('settings/getNotifActualites', data: {
         'id_user': _currentUser!.id,
       });
@@ -324,6 +331,41 @@ class AuthProvider extends ChangeNotifier {
         _hasInitialFetchDone = true;
         notifyListeners();
       }
+
+      // 2. Check Unread Messages for phone notification bar
+      try {
+        final msgRes = await _api.post('message/getUnreadCounts', data: {
+          'id_receiver': _currentUser!.id,
+          'type': 2,
+        });
+        if (msgRes.data != null) {
+          int totalUnreadMsg = 0;
+          if (msgRes.data is Map) {
+            (msgRes.data as Map).forEach((k, v) {
+              totalUnreadMsg += int.tryParse(v.toString()) ?? 0;
+            });
+          } else if (msgRes.data is List) {
+            for (final item in msgRes.data as List) {
+              if (item is Map) {
+                totalUnreadMsg += int.tryParse((item['count'] ?? item['unread'] ?? '1').toString()) ?? 1;
+              }
+            }
+          }
+          if (_hasInitialMessageFetchDone && totalUnreadMsg > _unreadMessages) {
+            final diff = totalUnreadMsg - _unreadMessages;
+            NotificationService.showMessageNotification(
+              senderName: 'Messagerie Apothicare',
+              message: diff == 1
+                  ? 'Vous avez reçu 1 nouveau message.'
+                  : 'Vous avez reçu $diff nouveaux messages.',
+              payload: 'message',
+            );
+          }
+          _unreadMessages = totalUnreadMsg;
+          _hasInitialMessageFetchDone = true;
+          notifyListeners();
+        }
+      } catch (_) {}
     } catch (e) {
       // Silently catch error
     } finally {

@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import '../network/api_client.dart';
+import '../services/notification_service.dart';
 
 class MessagerieUser {
   final int id;
@@ -126,6 +127,7 @@ class MessagerieProvider extends ChangeNotifier {
   bool _isLoadingMessages = false;
   bool _isSending = false;
   String? _errorMessage;
+  bool _hasInitialUnreadFetch = false;
 
   List<MessagerieUser> get users => _users;
   Map<int, int> get unreadCounts => _unreadCounts;
@@ -220,6 +222,25 @@ class MessagerieProvider extends ChangeNotifier {
             }
           }
         }
+
+        // Trigger local notification if new unread message is detected
+        if (_hasInitialUnreadFetch) {
+          map.forEach((senderId, count) {
+            final prevCount = _unreadCounts[senderId] ?? 0;
+            if (count > prevCount) {
+              final sender = _users.firstWhere(
+                (u) => u.id == senderId,
+                orElse: () => MessagerieUser(id: senderId, nom: 'Contact Apothicare'),
+              );
+              NotificationService.showMessageNotification(
+                senderName: sender.nom,
+                message: 'Vous avez reçu un nouveau message.',
+                payload: 'message',
+              );
+            }
+          });
+        }
+        _hasInitialUnreadFetch = true;
         _unreadCounts = map;
         notifyListeners();
       }
