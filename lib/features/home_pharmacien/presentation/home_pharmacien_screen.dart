@@ -453,7 +453,7 @@ class _HomePharmacienScreenState extends State<HomePharmacienScreen> {
                   ).animate().fadeIn(delay: 180.ms, duration: 300.ms),
                   const SizedBox(height: 12),
 
-                  // ─── 8 MODERN CARDS WITH GLOSSY SQUIRCLES ───
+                  // ─── 6 MODERN CARDS WITH GLOSSY SQUIRCLES ───
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: GridView.count(
@@ -471,48 +471,34 @@ class _HomePharmacienScreenState extends State<HomePharmacienScreen> {
                           onTap: () => Navigator.pushNamed(context, AppRoutes.calendarGardes),
                         ),
                         _buildMenuCard(
-                          icon: LucideIcons.mapPin,
-                          label: 'Recherche pharmacies',
-                          useAssetImage: true,
-                          delayMs: 240,
-                          onTap: () => Navigator.pushNamed(context, AppRoutes.gardesMap),
-                        ),
-                        _buildMenuCard(
                           icon: LucideIcons.messageCircle,
                           label: 'Notifications messagerie',
                           badgeCount: auth.unreadNotifications,
-                          delayMs: 280,
+                          delayMs: 250,
                           onTap: () => Navigator.pushNamed(context, AppRoutes.messagerie),
                         ),
                         _buildMenuCard(
                           icon: LucideIcons.search,
                           label: 'Recherche de médicaments',
-                          delayMs: 320,
+                          delayMs: 300,
                           onTap: () => Navigator.pushNamed(context, AppRoutes.medicaments),
-                        ),
-                        _buildMenuCard(
-                          icon: LucideIcons.bot,
-                          label: 'Ibn Jezzar',
-                          sublabel: "Le chatbot de l'Ordre",
-                          delayMs: 360,
-                          onTap: () => Navigator.pushNamed(context, AppRoutes.chatbot),
                         ),
                         _buildMenuCard(
                           icon: LucideIcons.check,
                           label: 'Observance',
-                          delayMs: 400,
+                          delayMs: 350,
                           onTap: () => Navigator.pushNamed(context, AppRoutes.observance),
                         ),
                         _buildMenuCard(
                           icon: LucideIcons.clipboardList,
                           label: 'Procédure CNOPT',
-                          delayMs: 440,
+                          delayMs: 400,
                           onTap: () => Navigator.pushNamed(context, AppRoutes.procedures),
                         ),
                         _buildMenuCard(
                           icon: LucideIcons.calendar,
                           label: 'Demande congés',
-                          delayMs: 480,
+                          delayMs: 450,
                           onTap: () => Navigator.pushNamed(context, AppRoutes.conges),
                         ),
                       ],
