@@ -356,6 +356,7 @@ class _SignInScreenState extends State<SignInScreen> {
                                     controller: _loginController,
                                     prefixIcon: LucideIcons.user,
                                     keyboardType: TextInputType.emailAddress,
+                                    textInputAction: TextInputAction.next,
                                   ),
                                   SizedBox(height: isSmallScreen ? 10 : 14),
 
@@ -366,6 +367,12 @@ class _SignInScreenState extends State<SignInScreen> {
                                     controller: _passwordController,
                                     prefixIcon: LucideIcons.lock,
                                     isPassword: true,
+                                    textInputAction: TextInputAction.done,
+                                    onFieldSubmitted: (_) {
+                                      if (!auth.isLoading) {
+                                        _handleLogin();
+                                      }
+                                    },
                                   ),
                                   const SizedBox(height: 6),
 

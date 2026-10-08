@@ -8,6 +8,8 @@ class CustomTextField extends StatefulWidget {
   final IconData prefixIcon;
   final bool isPassword;
   final TextInputType keyboardType;
+  final TextInputAction? textInputAction;
+  final ValueChanged<String>? onFieldSubmitted;
   final String? Function(String?)? validator;
   final bool enabled;
 
@@ -19,6 +21,8 @@ class CustomTextField extends StatefulWidget {
     required this.prefixIcon,
     this.isPassword = false,
     this.keyboardType = TextInputType.text,
+    this.textInputAction,
+    this.onFieldSubmitted,
     this.validator,
     this.enabled = true,
   });
@@ -49,6 +53,10 @@ class _CustomTextFieldState extends State<CustomTextField> {
           controller: widget.controller,
           obscureText: widget.isPassword ? _obscureText : false,
           keyboardType: widget.keyboardType,
+          textInputAction: widget.textInputAction ?? TextInputAction.done,
+          onFieldSubmitted: widget.onFieldSubmitted ?? (_) {
+            FocusManager.instance.primaryFocus?.unfocus();
+          },
           validator: widget.validator,
           enabled: widget.enabled,
           style: const TextStyle(

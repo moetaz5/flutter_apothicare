@@ -102,6 +102,15 @@ class ApothicareApp extends StatelessWidget {
         locale: const Locale('fr', 'FR'),
         routes: AppRoutes.routes,
         home: const SplashScreen(),
+        builder: (context, child) {
+          return GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTap: () {
+              FocusManager.instance.primaryFocus?.unfocus();
+            },
+            child: child ?? const SizedBox.shrink(),
+          );
+        },
       ),
     );
   }
