@@ -355,57 +355,36 @@ class _ObservanceScreenState extends State<ObservanceScreen> {
           ),
           const SizedBox(height: 14),
 
-          // Search Field + Clear Button
-          Row(
-            children: [
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF9FAFB),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: _notFound ? const Color(0xFFEF4444) : const Color(0xFFE5E7EB),
-                      width: 1.5,
-                    ),
-                  ),
-                  child: TextField(
-                    controller: _searchController,
-                    keyboardType: TextInputType.text,
-                    onSubmitted: (_) => _handleSearch(),
-                    decoration: InputDecoration(
-                      hintText: 'Ex: 31051999812',
-                      hintStyle: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 14),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-                      border: InputBorder.none,
-                      isDense: true,
-                      suffixIcon: _searchController.text.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(LucideIcons.x, size: 18, color: Color(0xFF9CA3AF)),
-                              onPressed: _handleClear,
-                            )
-                          : null,
-                    ),
-                    onChanged: (v) => setState(() {}),
-                  ),
-                ),
+          // Search Field
+          Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFFF9FAFB),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: _notFound ? const Color(0xFFEF4444) : const Color(0xFFE5E7EB),
+                width: 1.5,
               ),
-              if (_searchController.text.isNotEmpty) ...[
-                const SizedBox(width: 8),
-                InkWell(
-                  onTap: _handleClear,
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEF4444),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(LucideIcons.x, color: Colors.white, size: 20),
-                  ),
-                ),
-              ],
-            ],
+            ),
+            child: TextField(
+              controller: _searchController,
+              keyboardType: TextInputType.text,
+              onSubmitted: (_) => _handleSearch(),
+              decoration: InputDecoration(
+                hintText: 'Ex: 31051999812',
+                hintStyle: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 14),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+                border: InputBorder.none,
+                isDense: true,
+                prefixIcon: const Icon(LucideIcons.search, size: 18, color: Color(0xFF9CA3AF)),
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(LucideIcons.x, size: 18, color: Color(0xFF9CA3AF)),
+                        onPressed: _handleClear,
+                      )
+                    : null,
+              ),
+              onChanged: (v) => setState(() {}),
+            ),
           ),
           const SizedBox(height: 14),
 
@@ -589,7 +568,7 @@ class _ObservanceScreenState extends State<ObservanceScreen> {
   Widget _buildPatientMedicamentsCard() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(22),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
@@ -606,37 +585,52 @@ class _ObservanceScreenState extends State<ObservanceScreen> {
         children: [
           // Header + Nouvelle Dispensation button
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Médicaments du patient (${_patientMedicaments.length})',
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF163820),
+              Expanded(
+                child: Text(
+                  'Médicaments du patient (${_patientMedicaments.length})',
+                  style: const TextStyle(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF163820),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              ElevatedButton.icon(
-                onPressed: () {
-                  if (_searchedPatient != null) {
-                    Navigator.pushNamed(
-                      context,
-                      AppRoutes.ajouterDispensation,
-                      arguments: {'patient': _searchedPatient},
-                    );
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF244082),
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                ),
-                icon: const Icon(LucideIcons.plus, size: 15),
-                label: const Text(
-                  'Nouvelle dispensation',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+              const SizedBox(width: 8),
+              Material(
+                color: const Color(0xFF244082),
+                borderRadius: BorderRadius.circular(30),
+                child: InkWell(
+                  onTap: () {
+                    if (_searchedPatient != null) {
+                      Navigator.pushNamed(
+                        context,
+                        AppRoutes.ajouterDispensation,
+                        arguments: {'patient': _searchedPatient},
+                      );
+                    }
+                  },
+                  borderRadius: BorderRadius.circular(30),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(LucideIcons.plus, size: 14, color: Colors.white),
+                        SizedBox(width: 5),
+                        Text(
+                          'Nouvelle dispensation',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ],
