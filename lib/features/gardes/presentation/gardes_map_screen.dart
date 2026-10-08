@@ -1295,7 +1295,7 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      _navDestinationPharmacy?.nomPharmacie ?? 'Pharmacie de garde',
+                      _navDestinationPharmacy?.nomPharmacie ?? 'Pharmacie',
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.8),
                         fontSize: 12.0,
@@ -2105,7 +2105,7 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      ph.nomPharmacie ?? 'Pharmacie de Garde',
+                      ph.nomPharmacie ?? 'Pharmacie',
                       style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w800,
@@ -2261,7 +2261,7 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
           ),
           const SizedBox(height: 10),
           Text(
-            ph.nomPharmacie ?? 'Pharmacie de Garde',
+            ph.nomPharmacie ?? 'Pharmacie',
             style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w800,

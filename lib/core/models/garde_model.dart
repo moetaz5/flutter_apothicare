@@ -1,3 +1,5 @@
+import '../utils/crypto_helper.dart';
+
 class GardeModel {
   final int? id;
   final String? nomPharmacie;
@@ -31,9 +33,34 @@ class GardeModel {
   });
 
   factory GardeModel.fromJson(Map<String, dynamic> json) {
+    int? resolvedId = json['id'] is int ? json['id'] : int.tryParse(json['id']?.toString() ?? '');
+    String? resolvedTva = json['tva']?.toString();
+    String? resolvedName = (json['name'] ?? json['nom'] ?? json['nom_pharmacie'] ?? json['pharmacie'] ?? json['user_nom'])?.toString();
+
+    // Check if encrypted 'code' is provided (e.g. from getGardesForPatient)
+    final codeStr = json['code']?.toString();
+    if (codeStr != null && codeStr.isNotEmpty) {
+      final decrypted = CryptoHelper.decryptCryptoJS(codeStr);
+      if (decrypted != null && decrypted.isNotEmpty) {
+        final parts = decrypted.split('-');
+        if (parts.isNotEmpty && parts[0].isNotEmpty) {
+          resolvedId ??= int.tryParse(parts[0]);
+        }
+        if (parts.length > 1 && parts[1].isNotEmpty) {
+          resolvedTva ??= parts[1];
+        }
+        if (parts.length >= 3) {
+          final extractedName = parts.sublist(2).join('-').trim();
+          if (extractedName.isNotEmpty) {
+            resolvedName = extractedName;
+          }
+        }
+      }
+    }
+
     return GardeModel(
-      id: json['id'] is int ? json['id'] : int.tryParse(json['id']?.toString() ?? ''),
-      nomPharmacie: (json['name'] ?? json['nom'] ?? json['nom_pharmacie'] ?? json['pharmacie'] ?? json['user_nom'])?.toString() ?? 'Pharmacie de Garde',
+      id: resolvedId,
+      nomPharmacie: (resolvedName != null && resolvedName.trim().isNotEmpty) ? resolvedName.trim() : 'Pharmacie',
       adresse: (json['adresse'] ?? json['address'] ?? json['rue'])?.toString() ?? '',
       tel: (json['tel1'] ?? json['tel'] ?? json['telephone'] ?? json['phone'])?.toString() ?? '',
       lat: json['lat'] != null ? double.tryParse(json['lat'].toString()) : null,
@@ -43,7 +70,7 @@ class GardeModel {
       heureFin: json['heure_fin']?.toString() ?? '',
       dateGarde: json['date']?.toString() ?? '',
       isOpen: json['is_open'] == true || json['status'] == 1 || json['ouvert'] == true || true,
-      tva: json['tva']?.toString() ?? '',
+      tva: resolvedTva ?? '',
     );
   }
 

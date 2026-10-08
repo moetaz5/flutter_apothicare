@@ -50,6 +50,8 @@ dependencies:
   webview_flutter: ^4.14.1
   webview_flutter_android: ^4.14.0
   file_picker: ^8.1.7
+  encrypt: ^5.0.3
+  crypto: ^3.0.3
 
 dev_dependencies:
   flutter_test:
