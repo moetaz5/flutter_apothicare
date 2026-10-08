@@ -43,7 +43,7 @@ class AuthProvider extends ChangeNotifier {
     _notificationPollingTimer?.cancel();
     fetchUnreadNotifications();
     NotificationService.requestPermissions();
-    _notificationPollingTimer = Timer.periodic(const Duration(seconds: 45), (_) {
+    _notificationPollingTimer = Timer.periodic(const Duration(seconds: 15), (_) {
       if (isAuthenticated) {
         fetchUnreadNotifications();
       }
@@ -317,7 +317,17 @@ class AuthProvider extends ChangeNotifier {
       });
       if (response.data != null && response.data['nbRestant'] != null) {
         final newCount = int.tryParse(response.data['nbRestant'].toString()) ?? 0;
-        if (_hasInitialFetchDone && newCount > _unreadNotifications) {
+        if (!_hasInitialFetchDone) {
+          if (newCount > 0) {
+            NotificationService.showActualiteNotification(
+              titre: newCount == 1
+                  ? 'Vous avez 1 actualité non lue sur Apothicare !'
+                  : 'Vous avez $newCount actualités non lues sur Apothicare !',
+              resume: 'Consultez les dernières actualités.',
+              payload: 'actualite',
+            );
+          }
+        } else if (newCount > _unreadNotifications) {
           final diff = newCount - _unreadNotifications;
           NotificationService.showActualiteNotification(
             titre: diff == 1
@@ -351,7 +361,17 @@ class AuthProvider extends ChangeNotifier {
               }
             }
           }
-          if (_hasInitialMessageFetchDone && totalUnreadMsg > _unreadMessages) {
+          if (!_hasInitialMessageFetchDone) {
+            if (totalUnreadMsg > 0) {
+              NotificationService.showMessageNotification(
+                senderName: 'Messagerie Apothicare',
+                message: totalUnreadMsg == 1
+                    ? 'Vous avez 1 message non lu.'
+                    : 'Vous avez $totalUnreadMsg messages non lus.',
+                payload: 'message',
+              );
+            }
+          } else if (totalUnreadMsg > _unreadMessages) {
             final diff = totalUnreadMsg - _unreadMessages;
             NotificationService.showMessageNotification(
               senderName: 'Messagerie Apothicare',

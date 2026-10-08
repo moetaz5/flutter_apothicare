@@ -15,7 +15,7 @@ class NotificationService {
     navigatorKey = navKey;
 
     // 1. Android Initialization Settings
-    const AndroidInitializationSettings androidSettings = AndroidInitializationSettings('@mipmap/launcher_icon');
+    const AndroidInitializationSettings androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
 
     // 2. iOS Initialization Settings
     const DarwinInitializationSettings iosSettings = DarwinInitializationSettings(
@@ -40,9 +40,9 @@ class NotificationService {
       if (androidImplementation != null) {
         await androidImplementation.createNotificationChannel(
           const AndroidNotificationChannel(
-            'apothicare_general_channel',
+            'apothicare_general_channel_v3',
             'Notifications Apothicare',
-            description: 'Notifications de messages, actualités et dispensations Apothicare',
+            description: 'Canal principal des notifications Apothicare',
             importance: Importance.max,
             playSound: true,
             enableVibration: true,
@@ -81,16 +81,21 @@ class NotificationService {
     required String body,
     String? payload,
   }) async {
-    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-      'apothicare_general_channel',
+    final AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+      'apothicare_general_channel_v3',
       'Notifications Apothicare',
       channelDescription: 'Canal principal des notifications Apothicare',
       importance: Importance.max,
       priority: Priority.high,
       playSound: true,
       enableVibration: true,
-      icon: '@mipmap/launcher_icon',
-      color: Color(0xFF71A246),
+      icon: '@mipmap/ic_launcher',
+      color: const Color(0xFF71A246),
+      styleInformation: BigTextStyleInformation(
+        body,
+        contentTitle: title,
+      ),
+      visibility: NotificationVisibility.public,
     );
 
     const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
@@ -99,7 +104,7 @@ class NotificationService {
       presentSound: true,
     );
 
-    const NotificationDetails notificationDetails = NotificationDetails(
+    final NotificationDetails notificationDetails = NotificationDetails(
       android: androidDetails,
       iOS: iosDetails,
     );
@@ -110,6 +115,16 @@ class NotificationService {
       body,
       notificationDetails,
       payload: payload,
+    );
+  }
+
+  /// Test notification helper
+  static Future<void> showTestNotification() async {
+    await showNotification(
+      id: 9999,
+      title: '🔔 Test Notification Apothicare',
+      body: 'Les notifications système fonctionnent parfaitement sur votre téléphone !',
+      payload: 'actualite',
     );
   }
 

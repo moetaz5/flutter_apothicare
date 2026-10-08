@@ -10,6 +10,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/models/user_model.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/routes/app_routes.dart';
+import '../../../core/services/notification_service.dart';
 import '../../../core/utils/app_toast.dart';
 import '../../../shared/widgets/app_bottom_nav_bar.dart';
 import '../../../shared/widgets/wave_clipper.dart';
@@ -551,6 +552,42 @@ class _PharmacienProfileScreenState extends State<PharmacienProfileScreen> {
                                     icon: LucideIcons.settings,
                                     message: 'Aucun service disponible pour cet utilisateur.',
                                   ),
+                          ),
+                          const SizedBox(height: 18),
+
+                          // 7. SECTION: NOTIFICATIONS & TEST
+                          _buildSectionCard(
+                            title: 'NOTIFICATIONS MOBILES',
+                            icon: LucideIcons.bell,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Vérifiez la réception des alertes système (actualités, messages, dispensations) sur votre téléphone.',
+                                  style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+                                ),
+                                const SizedBox(height: 12),
+                                SizedBox(
+                                  width: double.infinity,
+                                  height: 46,
+                                  child: OutlinedButton.icon(
+                                    onPressed: () async {
+                                      await NotificationService.showTestNotification();
+                                      AppToast.showSuccess('Notification de test envoyée !');
+                                    },
+                                    icon: const Icon(LucideIcons.bellRing, size: 16, color: Color(0xFF71A246)),
+                                    label: const Text(
+                                      'Tester la notification système',
+                                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF163820)),
+                                    ),
+                                    style: OutlinedButton.styleFrom(
+                                      side: const BorderSide(color: Color(0xFF71A246), width: 1.5),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                           const SizedBox(height: 30),
                         ],
