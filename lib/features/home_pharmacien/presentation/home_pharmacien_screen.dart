@@ -338,66 +338,71 @@ class _HomePharmacienScreenState extends State<HomePharmacienScreen> {
                 children: [
                   // ─── UNIFIED SLEEK HEADER BAR ───
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 14, 20, 16),
+                    padding: const EdgeInsets.fromLTRB(18, 12, 18, 14),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // User info with glowing avatar
-                        InkWell(
-                          onTap: () => Navigator.pushNamed(context, AppRoutes.profile),
-                          borderRadius: BorderRadius.circular(30),
-                          child: Row(
-                            children: [
-                              RotatingGlowingAvatar(
-                                user: user,
-                                size: 52,
-                                showCameraBadge: true,
-                                onTap: () => Navigator.pushNamed(context, AppRoutes.profile),
-                                onCameraTap: _showPhotoOptionsModal,
-                              ),
-                              const SizedBox(width: 12),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
+                        // User info with glowing avatar (Expanded to prevent overflow)
+                        Expanded(
+                          child: InkWell(
+                            onTap: () => Navigator.pushNamed(context, AppRoutes.profile),
+                            borderRadius: BorderRadius.circular(30),
+                            child: Row(
+                              children: [
+                                RotatingGlowingAvatar(
+                                  user: user,
+                                  size: 48,
+                                  showCameraBadge: true,
+                                  onTap: () => Navigator.pushNamed(context, AppRoutes.profile),
+                                  onCameraTap: _showPhotoOptionsModal,
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Text(
                                         '${_getGreeting()} 👋',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                         style: const TextStyle(
-                                          fontSize: 12.5,
+                                          fontSize: 12,
                                           fontWeight: FontWeight.w600,
                                           color: AppColors.primaryGreenDark,
                                         ),
                                       ),
+                                      const SizedBox(height: 1),
+                                      Text(
+                                        displayName,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontSize: 17,
+                                          fontWeight: FontWeight.w900,
+                                          color: AppColors.forestGreen,
+                                          letterSpacing: -0.3,
+                                        ),
+                                      ),
                                     ],
                                   ),
-                                  const SizedBox(height: 1),
-                                  Text(
-                                    displayName,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w900,
-                                      color: AppColors.forestGreen,
-                                      letterSpacing: -0.4,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
+                                ),
+                              ],
+                            ),
                           ),
                         ).animate().fadeIn(duration: 350.ms).slideX(begin: -0.1),
 
+                        const SizedBox(width: 8),
+
                         // Header Actions (Quick Scan & Notifications)
                         Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
                             _buildHeaderActionButton(
                               icon: LucideIcons.scanLine,
                               label: 'Scan',
                               onTap: () => Navigator.pushNamed(context, AppRoutes.qrScanner),
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: 6),
                             _buildHeaderActionButton(
                               icon: LucideIcons.bell,
                               badgeCount: auth.unreadNotifications,
@@ -462,7 +467,7 @@ class _HomePharmacienScreenState extends State<HomePharmacienScreen> {
                       crossAxisCount: 2,
                       crossAxisSpacing: 14,
                       mainAxisSpacing: 14,
-                      childAspectRatio: 0.98,
+                      childAspectRatio: 0.95,
                       children: [
                         _buildMenuCard(
                           icon: LucideIcons.calendarSearch,
