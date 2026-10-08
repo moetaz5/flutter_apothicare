@@ -63,6 +63,8 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
   int _remainingDurationMin = 0;
   String _etaTimeStr = '';
   int _currentStepIndex = 0;
+  List<LatLng> _fullRoutePoints = [];
+  int _lastPassedPolylineIndex = 0;
 
   static const LatLng _tunisiaDefaultLocation = LatLng(34.7406, 10.7603); // Sfax / Tunisie
   static const int _maxVisibleMarkers = 20;
@@ -119,17 +121,19 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
         _userGpsStreamSub = Geolocator.getPositionStream(
           locationSettings: const LocationSettings(
             accuracy: LocationAccuracy.high,
-            distanceFilter: 5,
+            distanceFilter: 2,
           ),
         ).listen((pos) {
           if (pos.latitude >= 30.0 && pos.latitude <= 38.5 && pos.longitude >= 7.0 && pos.longitude <= 12.5 && mounted) {
             final newPos = LatLng(pos.latitude, pos.longitude);
-            if (_currentUserGpsLocation != newPos) {
-              setState(() {
-                _currentUserGpsLocation = newPos;
-              });
+            _currentUserGpsLocation = newPos;
+            if (_isNavigating && !_isLiveGuiding) {
+              _updateRouteProgress(newPos, speed: pos.speed, heading: pos.heading);
+            }
+            if (!_isNavigating) {
               _buildMarkers(context.read<GardeProvider>().gardes);
             }
+            setState(() {});
           }
         });
       }
@@ -544,6 +548,8 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
         _isNavigating = true;
         _isCalculatingRoute = false;
         _currentRouteInfo = routeInfo;
+        _fullRoutePoints = List<LatLng>.from(routeInfo.points);
+        _lastPassedPolylineIndex = 0;
         _polylines = newPolylines;
         _remainingDistanceMeters = routeInfo.distanceKm * 1000.0;
         _remainingDurationMin = routeInfo.durationMinutes;
@@ -600,7 +606,7 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
 
     final int initialDurationMin = _currentRouteInfo!.durationMinutes > 0
         ? _currentRouteInfo!.durationMinutes
-        : (_travelMode == 'driving' ? (initialDistMeters / 500.0) : (initialDistMeters / 80.0)).ceil().clamp(1, 999);
+        : (_travelMode == 'driving' ? (initialDistMeters / 450.0) : (initialDistMeters / 80.0)).ceil().clamp(1, 999);
     final eta = DateTime.now().add(Duration(minutes: initialDurationMin));
 
     setState(() {
@@ -649,33 +655,7 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
     if (!_isLiveGuiding || !mounted) return;
 
     final newPos = LatLng(pos.latitude, pos.longitude);
-    _liveUserPosition = newPos;
-    _currentSpeedKmH = (pos.speed * 3.6).clamp(0.0, 160.0);
-
-    double targetBearing = _currentBearing;
-    if (pos.heading > 0 && pos.heading <= 360) {
-      targetBearing = pos.heading;
-    } else if (_currentRouteInfo != null && _currentRouteInfo!.points.isNotEmpty) {
-      final nextPt = _findNextWaypoint(newPos, _currentRouteInfo!.points);
-      targetBearing = InAppRouteService.calculateBearing(newPos, nextPt);
-    }
-    _currentBearing = targetBearing;
-
-    // Check distance to destination based exclusively on real user GPS position
-    if (_navDestinationPharmacy?.lat != null && _navDestinationPharmacy?.lng != null) {
-      final destPos = LatLng(_navDestinationPharmacy!.lat!, _navDestinationPharmacy!.lng!);
-      final distToDest = _calculateDistanceKm(newPos.latitude, newPos.longitude, destPos.latitude, destPos.longitude) * 1000.0;
-      _remainingDistanceMeters = distToDest;
-      _remainingDurationMin = (_travelMode == 'driving' ? (distToDest / 500.0) : (distToDest / 80.0)).ceil().clamp(1, 999);
-      final eta = DateTime.now().add(Duration(minutes: _remainingDurationMin));
-      _etaTimeStr = '${eta.hour.toString().padLeft(2, '0')}:${eta.minute.toString().padLeft(2, '0')}';
-
-      if (distToDest < 25) {
-        AppToast.showSuccess('🎉 Vous êtes arrivé à la pharmacie !', context);
-      }
-    }
-
-    _updateActiveStep(newPos);
+    _updateRouteProgress(newPos, speed: pos.speed, heading: pos.heading);
 
     try {
       final controller = await _mapController.future;
@@ -694,21 +674,97 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
     if (mounted) setState(() {});
   }
 
-  LatLng _findNextWaypoint(LatLng curr, List<LatLng> points) {
-    if (points.isEmpty) return curr;
-    double minDist = 999999;
-    int closestIdx = 0;
-    for (int i = 0; i < points.length; i++) {
-      final d = _calculateDistanceKm(curr.latitude, curr.longitude, points[i].latitude, points[i].longitude);
+  void _updateRouteProgress(LatLng newPos, {double? speed, double? heading}) {
+    if (!_isNavigating || _fullRoutePoints.isEmpty || _navDestinationPharmacy == null) return;
+
+    _liveUserPosition = newPos;
+    if (speed != null) {
+      _currentSpeedKmH = (speed * 3.6).clamp(0.0, 160.0);
+    }
+
+    if (heading != null && heading > 0 && heading <= 360) {
+      _currentBearing = heading;
+    }
+
+    // Find closest point index on _fullRoutePoints from current progress forward
+    int closestIdx = _lastPassedPolylineIndex;
+    double minDist = double.infinity;
+    for (int i = _lastPassedPolylineIndex; i < _fullRoutePoints.length; i++) {
+      final d = _calculateDistanceKm(newPos.latitude, newPos.longitude, _fullRoutePoints[i].latitude, _fullRoutePoints[i].longitude) * 1000.0;
       if (d < minDist) {
         minDist = d;
         closestIdx = i;
       }
     }
-    if (closestIdx + 1 < points.length) {
-      return points[closestIdx + 1];
+    _lastPassedPolylineIndex = closestIdx;
+
+    // Slice remaining polyline points from current user position to destination
+    final List<LatLng> remainingPoints = [newPos];
+    if (_lastPassedPolylineIndex + 1 < _fullRoutePoints.length) {
+      remainingPoints.addAll(_fullRoutePoints.sublist(_lastPassedPolylineIndex + 1));
+    } else if (_navDestinationPharmacy?.lat != null && _navDestinationPharmacy?.lng != null) {
+      remainingPoints.add(LatLng(_navDestinationPharmacy!.lat!, _navDestinationPharmacy!.lng!));
     }
-    return points.last;
+
+    if ((heading == null || heading <= 0) && remainingPoints.length > 1) {
+      _currentBearing = InAppRouteService.calculateBearing(newPos, remainingPoints[1]);
+    }
+
+    // Calculate total remaining distance in meters along the path
+    double distAlongPoints = 0.0;
+    for (int i = 0; i < remainingPoints.length - 1; i++) {
+      distAlongPoints += _calculateDistanceKm(
+        remainingPoints[i].latitude,
+        remainingPoints[i].longitude,
+        remainingPoints[i + 1].latitude,
+        remainingPoints[i + 1].longitude,
+      ) * 1000.0;
+    }
+
+    final destPos = LatLng(_navDestinationPharmacy!.lat!, _navDestinationPharmacy!.lng!);
+    final directDistToDest = _calculateDistanceKm(newPos.latitude, newPos.longitude, destPos.latitude, destPos.longitude) * 1000.0;
+    final totalRemainingMeters = directDistToDest < 30 ? directDistToDest : (distAlongPoints > 0 ? distAlongPoints : directDistToDest);
+
+    _remainingDistanceMeters = totalRemainingMeters;
+
+    // Calculate remaining duration down to 0 min at destination
+    if (totalRemainingMeters <= 25) {
+      _remainingDurationMin = 0;
+      if (_isLiveGuiding) {
+        AppToast.showSuccess('🎉 Vous êtes arrivé à la pharmacie !', context);
+      }
+    } else {
+      _remainingDurationMin = (_travelMode == 'driving'
+          ? (totalRemainingMeters / 450.0).ceil()
+          : (totalRemainingMeters / 80.0).ceil()).clamp(1, 999);
+    }
+
+    final eta = DateTime.now().add(Duration(minutes: _remainingDurationMin));
+    _etaTimeStr = '${eta.hour.toString().padLeft(2, '0')}:${eta.minute.toString().padLeft(2, '0')}';
+
+    // Update dynamic trimmed polyline (blue route line shrinks as user moves)
+    _polylines = {
+      Polyline(
+        polylineId: const PolylineId('route_shadow'),
+        points: remainingPoints,
+        color: const Color(0xFF1E3A8A).withValues(alpha: 0.35),
+        width: 8,
+        jointType: JointType.round,
+        endCap: Cap.roundCap,
+        startCap: Cap.roundCap,
+      ),
+      Polyline(
+        polylineId: const PolylineId('route_active'),
+        points: remainingPoints,
+        color: const Color(0xFF2563EB),
+        width: 5,
+        jointType: JointType.round,
+        endCap: Cap.roundCap,
+        startCap: Cap.roundCap,
+      ),
+    };
+
+    _updateActiveStep(newPos);
   }
 
   void _updateActiveStep(LatLng userPos) {
@@ -769,6 +825,8 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
       _isNavigating = false;
       _isLiveGuiding = false;
       _currentRouteInfo = null;
+      _fullRoutePoints = [];
+      _lastPassedPolylineIndex = 0;
       _navDestinationPharmacy = null;
       _polylines = {};
       _selectedPharmacy = null;
@@ -1344,7 +1402,10 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
   Widget _buildLiveNavigationBottomBar() {
     final distStr = _remainingDistanceMeters >= 1000
         ? '${(_remainingDistanceMeters / 1000.0).toStringAsFixed(1)} km'
-        : '${_remainingDistanceMeters.toInt()} m';
+        : '${_remainingDistanceMeters.round()} m';
+    final durationStr = (_remainingDistanceMeters <= 25) || _remainingDurationMin == 0
+        ? '0 min'
+        : '$_remainingDurationMin min';
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -1385,7 +1446,7 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Text(
-                  '$_remainingDurationMin min',
+                  durationStr,
                   style: const TextStyle(
                     fontSize: 21,
                     fontWeight: FontWeight.w900,
@@ -1868,8 +1929,13 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
   Widget _buildInAppRouteBottomCard() {
     final ph = _navDestinationPharmacy!;
     final info = _currentRouteInfo;
-    final durationStr = info != null ? '${info.durationMinutes} min' : '-- min';
-    final distanceStr = info != null ? '${info.distanceKm.toStringAsFixed(1)} km' : '-- km';
+    final double distKm = _remainingDistanceMeters > 0 ? (_remainingDistanceMeters / 1000.0) : (info?.distanceKm ?? 0.0);
+    final String durationStr = (_remainingDistanceMeters <= 25 && _isNavigating) || _remainingDurationMin == 0
+        ? '0 min'
+        : '$_remainingDurationMin min';
+    final String distanceStr = _remainingDistanceMeters < 1000 && _remainingDistanceMeters > 0
+        ? '${_remainingDistanceMeters.round()} m'
+        : '${distKm.toStringAsFixed(1)} km';
 
     return Container(
       padding: const EdgeInsets.all(16),
