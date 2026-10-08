@@ -600,8 +600,9 @@ class _ObservanceScreenState extends State<ObservanceScreen> {
               ),
               const SizedBox(width: 8),
               Material(
-                color: const Color(0xFF244082),
+                color: const Color(0xFF71A246),
                 borderRadius: BorderRadius.circular(30),
+                elevation: 0,
                 child: InkWell(
                   onTap: () {
                     if (_searchedPatient != null) {
@@ -614,7 +615,17 @@ class _ObservanceScreenState extends State<ObservanceScreen> {
                   },
                   borderRadius: BorderRadius.circular(30),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7.5),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(30),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF71A246).withValues(alpha: 0.28),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
