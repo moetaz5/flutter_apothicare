@@ -17,8 +17,6 @@ class AuthProvider extends ChangeNotifier {
   int _unreadNotifications = 0;
   int _unreadMessages = 0;
   Timer? _notificationPollingTimer;
-  bool _hasInitialFetchDone = false;
-  bool _hasInitialMessageFetchDone = false;
 
   UserModel? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
@@ -68,8 +66,6 @@ class AuthProvider extends ChangeNotifier {
   void _stopNotificationPolling() {
     _notificationPollingTimer?.cancel();
     _notificationPollingTimer = null;
-    _hasInitialFetchDone = false;
-    _hasInitialMessageFetchDone = false;
     _unreadMessages = 0;
     WebSocketService().removeListener(_onWebSocketMessage);
     WebSocketService().disconnect();
@@ -328,7 +324,7 @@ class AuthProvider extends ChangeNotifier {
     if (_currentUser?.id == null || _isFetchingNotifications) return;
     _isFetchingNotifications = true;
     try {
-      // 1. Check Actualités notifications
+      // 1. Check Actualités count for badge
       try {
         final response = await _api.post(
           'settings/getNotifActualites',
@@ -337,33 +333,12 @@ class AuthProvider extends ChangeNotifier {
         );
         if (response.data != null && response.data['nbRestant'] != null) {
           final newCount = int.tryParse(response.data['nbRestant'].toString()) ?? 0;
-          if (!_hasInitialFetchDone) {
-            if (newCount > 0) {
-              NotificationService.showActualiteNotification(
-                titre: newCount == 1
-                    ? 'Vous avez 1 actualité non lue sur Apothicare !'
-                    : 'Vous avez $newCount actualités non lues sur Apothicare !',
-                resume: 'Consultez les dernières actualités.',
-                payload: 'actualite',
-              );
-            }
-          } else if (newCount > _unreadNotifications) {
-            final diff = newCount - _unreadNotifications;
-            NotificationService.showActualiteNotification(
-              titre: diff == 1
-                  ? 'Une nouvelle actualité est disponible sur Apothicare !'
-                  : '$diff nouvelles actualités sont disponibles sur Apothicare !',
-              resume: 'Consultez les dernières informations et mises à jour.',
-              payload: 'actualite',
-            );
-          }
           _unreadNotifications = newCount;
-          _hasInitialFetchDone = true;
           notifyListeners();
         }
       } catch (_) {}
 
-      // 2. Check Unread Messages for phone notification bar
+      // 2. Check Unread Messages count for badge
       try {
         final msgRes = await _api.post(
           'message/getUnreadCounts',
@@ -386,28 +361,7 @@ class AuthProvider extends ChangeNotifier {
               }
             }
           }
-          if (!_hasInitialMessageFetchDone) {
-            if (totalUnreadMsg > 0) {
-              NotificationService.showMessageNotification(
-                senderName: 'Messagerie Apothicare',
-                message: totalUnreadMsg == 1
-                    ? 'Vous avez 1 message non lu.'
-                    : 'Vous avez $totalUnreadMsg messages non lus.',
-                payload: 'message',
-              );
-            }
-          } else if (totalUnreadMsg > _unreadMessages) {
-            final diff = totalUnreadMsg - _unreadMessages;
-            NotificationService.showMessageNotification(
-              senderName: 'Messagerie Apothicare',
-              message: diff == 1
-                  ? 'Vous avez reçu 1 nouveau message.'
-                  : 'Vous avez reçu $diff nouveaux messages.',
-              payload: 'message',
-            );
-          }
           _unreadMessages = totalUnreadMsg;
-          _hasInitialMessageFetchDone = true;
           notifyListeners();
         }
       } catch (_) {}
