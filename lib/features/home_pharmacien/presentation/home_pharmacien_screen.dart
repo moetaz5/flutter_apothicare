@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
@@ -9,7 +10,6 @@ import '../../../core/routes/app_routes.dart';
 import '../../../core/utils/app_toast.dart';
 import '../../../shared/widgets/app_bottom_nav_bar.dart';
 import '../../../shared/widgets/rotating_glowing_avatar.dart';
-import '../../../shared/widgets/wave_clipper.dart';
 
 class HomePharmacienScreen extends StatefulWidget {
   const HomePharmacienScreen({super.key});
@@ -276,216 +276,481 @@ class _HomePharmacienScreenState extends State<HomePharmacienScreen> {
 
   String _getGreeting() {
     final hour = DateTime.now().hour;
-    if (hour >= 5 && hour < 12) return 'Bonjour 👋';
-    if (hour >= 12 && hour < 18) return 'Bon après-midi 👋';
-    return 'Bonne soirée 🌙';
+    if (hour >= 5 && hour < 12) return 'Bonjour';
+    if (hour >= 12 && hour < 18) return 'Bon après-midi';
+    return 'Bonne soirée';
   }
 
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final user = auth.currentUser;
-    final topPadding = MediaQuery.of(context).padding.top;
     final displayName = user?.displayName ?? 'Espace Pharmacien';
 
     return Scaffold(
-      backgroundColor: AppColors.scaffoldBackground,
-      body: SingleChildScrollView(
-        controller: _scrollController,
-        child: Column(
-          children: [
-            // ─── HERO HEADER (Identique React HomePharmacien.jsx & HomePatient) ───
-            Container(
-              width: double.infinity,
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                image: DecorationImage(
-                  image: AssetImage('assets/images/back-mobile.png'),
-                  repeat: ImageRepeat.repeat,
-                  opacity: 0.18,
-                  scale: 1.5,
+      backgroundColor: const Color(0xFFF4F7F2),
+      body: Stack(
+        children: [
+          // ─── AMBIENT BACKGROUND GLOWING ORBS ───
+          Positioned(
+            top: -80,
+            right: -60,
+            child: Container(
+              width: 280,
+              height: 280,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    AppColors.primaryGreen.withValues(alpha: 0.20),
+                    AppColors.primaryGreen.withValues(alpha: 0.0),
+                  ],
                 ),
               ),
-              child: Stack(
+            ),
+          ),
+          Positioned(
+            top: 240,
+            left: -100,
+            child: Container(
+              width: 260,
+              height: 260,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    const Color(0xFF3B82F6).withValues(alpha: 0.08),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          SafeArea(
+            bottom: false,
+            child: SingleChildScrollView(
+              controller: _scrollController,
+              padding: const EdgeInsets.only(bottom: 110),
+              physics: const BouncingScrollPhysics(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Gradient overlay
-                  Positioned.fill(
-                    child: Container(
-                      decoration: const BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            Color(0xD9FFFFFF),
-                            Color(0xC4F0F8EB),
-                            Color(0x2871A246),
-                          ],
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  // Decorative circle
-                  Positioned(
-                    bottom: -40,
-                    right: -30,
-                    child: Container(
-                      width: 180,
-                      height: 180,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: AppColors.primaryGreen.withValues(alpha: 0.12),
-                      ),
-                    ),
-                  ),
-
-                  SizedBox(
-                    width: double.infinity,
-                    child: Padding(
-                      padding: EdgeInsets.only(top: topPadding + 20, bottom: 28, left: 20, right: 20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          // Rotating Glowing Avatar with Pharmacist initials / photo & camera badge
-                          RotatingGlowingAvatar(
-                            user: user,
-                            size: 80,
-                            showCameraBadge: true,
-                            onTap: () => Navigator.pushNamed(context, AppRoutes.profile),
-                            onCameraTap: _showPhotoOptionsModal,
-                          ),
-                          const SizedBox(height: 14),
-
-                          // Time-aware greeting context pill (Identique React)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.85),
-                              borderRadius: BorderRadius.circular(30),
-                              border: Border.all(color: AppColors.primaryGreen.withValues(alpha: 0.25)),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.03),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: Text(
-                              _getGreeting(),
-                              style: const TextStyle(
-                                color: Color(0xFF4B6A3A),
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.3,
+                  // ─── UNIFIED SLEEK HEADER BAR ───
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 14, 20, 16),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // User info with glowing avatar
+                        InkWell(
+                          onTap: () => Navigator.pushNamed(context, AppRoutes.profile),
+                          borderRadius: BorderRadius.circular(30),
+                          child: Row(
+                            children: [
+                              RotatingGlowingAvatar(
+                                user: user,
+                                size: 52,
+                                showCameraBadge: true,
+                                onTap: () => Navigator.pushNamed(context, AppRoutes.profile),
+                                onCameraTap: _showPhotoOptionsModal,
                               ),
-                            ),
+                              const SizedBox(width: 12),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Text(
+                                        '${_getGreeting()} 👋',
+                                        style: const TextStyle(
+                                          fontSize: 12.5,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.primaryGreenDark,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 1),
+                                  Text(
+                                    displayName,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w900,
+                                      color: AppColors.forestGreen,
+                                      letterSpacing: -0.4,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 6),
+                        ).animate().fadeIn(duration: 350.ms).slideX(begin: -0.1),
 
-                          // Pharmacist Name
-                          Text(
-                            displayName,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.forestGreen,
-                              letterSpacing: -0.3,
+                        // Header Actions (Quick Scan & Notifications)
+                        Row(
+                          children: [
+                            _buildHeaderActionButton(
+                              icon: LucideIcons.scanLine,
+                              label: 'Scan',
+                              onTap: () => Navigator.pushNamed(context, AppRoutes.qrScanner),
                             ),
-                          ),
-                        ],
-                      ),
+                            const SizedBox(width: 8),
+                            _buildHeaderActionButton(
+                              icon: LucideIcons.bell,
+                              badgeCount: auth.unreadNotifications,
+                              onTap: () => Navigator.pushNamed(context, AppRoutes.actualites),
+                            ),
+                          ],
+                        ).animate().fadeIn(duration: 350.ms).slideX(begin: 0.1),
+                      ],
                     ),
                   ),
 
-                  // Bottom Wave Divider
-                  Positioned(
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    child: CustomPaint(
-                      size: const Size(double.infinity, 24),
-                      painter: WavePainter(),
+                  // ─── HERO FEATURE CARD: PHARMACIES & CALENDRIER ───
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+                    child: _buildHeroPharmaciesCard(
+                      onTap: () => Navigator.pushNamed(context, AppRoutes.gardesMap),
+                    ).animate().fadeIn(delay: 150.ms, duration: 400.ms).scale(begin: const Offset(0.97, 0.97)),
+                  ),
+                  const SizedBox(height: 18),
+
+                  // ─── SECTION TITLE: SERVICES PROFESSIONNELS ───
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 22),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Services & Officine',
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF1E293B),
+                            letterSpacing: -0.3,
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: AppColors.primaryGreen.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Text(
+                            'CNOPT Pro',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primaryGreenDark,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
+                  ).animate().fadeIn(delay: 180.ms, duration: 300.ms),
+                  const SizedBox(height: 12),
+
+                  // ─── 8 MODERN CARDS WITH GLOSSY SQUIRCLES ───
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: GridView.count(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 14,
+                      mainAxisSpacing: 14,
+                      childAspectRatio: 0.98,
+                      children: [
+                        _buildMenuCard(
+                          icon: LucideIcons.calendarSearch,
+                          label: 'Calendrier de gardes',
+                          delayMs: 200,
+                          onTap: () => Navigator.pushNamed(context, AppRoutes.calendarGardes),
+                        ),
+                        _buildMenuCard(
+                          icon: LucideIcons.mapPin,
+                          label: 'Recherche pharmacies',
+                          useAssetImage: true,
+                          delayMs: 240,
+                          onTap: () => Navigator.pushNamed(context, AppRoutes.gardesMap),
+                        ),
+                        _buildMenuCard(
+                          icon: LucideIcons.messageCircle,
+                          label: 'Notifications messagerie',
+                          badgeCount: auth.unreadNotifications,
+                          delayMs: 280,
+                          onTap: () => Navigator.pushNamed(context, AppRoutes.messagerie),
+                        ),
+                        _buildMenuCard(
+                          icon: LucideIcons.search,
+                          label: 'Recherche de médicaments',
+                          delayMs: 320,
+                          onTap: () => Navigator.pushNamed(context, AppRoutes.medicaments),
+                        ),
+                        _buildMenuCard(
+                          icon: LucideIcons.bot,
+                          label: 'Ibn Jezzar',
+                          sublabel: "Le chatbot de l'Ordre",
+                          delayMs: 360,
+                          onTap: () => Navigator.pushNamed(context, AppRoutes.chatbot),
+                        ),
+                        _buildMenuCard(
+                          icon: LucideIcons.check,
+                          label: 'Observance',
+                          delayMs: 400,
+                          onTap: () => Navigator.pushNamed(context, AppRoutes.observance),
+                        ),
+                        _buildMenuCard(
+                          icon: LucideIcons.clipboardList,
+                          label: 'Procédure CNOPT',
+                          delayMs: 440,
+                          onTap: () => Navigator.pushNamed(context, AppRoutes.procedures),
+                        ),
+                        _buildMenuCard(
+                          icon: LucideIcons.calendar,
+                          label: 'Demande congés',
+                          delayMs: 480,
+                          onTap: () => Navigator.pushNamed(context, AppRoutes.conges),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // ─── QUICK BANNER: IBN JEZZAR AI ASSISTANT ───
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: _buildAIBannerCard(
+                      onTap: () => Navigator.pushNamed(context, AppRoutes.chatbot),
+                    ).animate().fadeIn(delay: 500.ms, duration: 400.ms),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // ─── DAILY HEALTH TIP / NOTE PROFESSIONNELLE ───
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: _buildProHealthTipCard().animate().fadeIn(delay: 550.ms, duration: 400.ms),
                   ),
                 ],
               ),
             ),
-
-            // ─── PHARMACIEN MENU GRID (8 Items Identiques React) ───
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              child: GridView.count(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: 2,
-                crossAxisSpacing: 14,
-                mainAxisSpacing: 14,
-                childAspectRatio: 0.98,
-                children: [
-                  _buildMenuCard(
-                    icon: LucideIcons.calendarSearch,
-                    label: 'Calendrier de gardes',
-                    delayMs: 180,
-                    onTap: () => Navigator.pushNamed(context, AppRoutes.calendarGardes),
-                  ),
-                  _buildMenuCard(
-                    icon: LucideIcons.mapPin,
-                    label: 'Recherche pharmacies',
-                    useAssetImage: true,
-                    delayMs: 220,
-                    onTap: () => Navigator.pushNamed(context, AppRoutes.gardesMap),
-                  ),
-                  _buildMenuCard(
-                    icon: LucideIcons.messageCircle,
-                    label: 'Notifications messagerie',
-                    badgeCount: auth.unreadNotifications,
-                    delayMs: 260,
-                    onTap: () => Navigator.pushNamed(context, AppRoutes.messagerie),
-                  ),
-                  _buildMenuCard(
-                    icon: LucideIcons.search,
-                    label: 'Recherche de médicaments',
-                    delayMs: 300,
-                    onTap: () => Navigator.pushNamed(context, AppRoutes.medicaments),
-                  ),
-                  _buildMenuCard(
-                    icon: LucideIcons.bot,
-                    label: 'Ibn Jezzar',
-                    sublabel: "Le chatbot de l'Ordre",
-                    delayMs: 340,
-                    onTap: () => Navigator.pushNamed(context, AppRoutes.chatbot),
-                  ),
-                  _buildMenuCard(
-                    icon: LucideIcons.check,
-                    label: 'Observance',
-                    delayMs: 380,
-                    onTap: () => Navigator.pushNamed(context, AppRoutes.observance),
-                  ),
-                  _buildMenuCard(
-                    icon: LucideIcons.clipboardList,
-                    label: 'Procédure CNOPT',
-                    delayMs: 420,
-                    onTap: () => Navigator.pushNamed(context, AppRoutes.procedures),
-                  ),
-                  _buildMenuCard(
-                    icon: LucideIcons.calendar,
-                    label: 'Demande congés',
-                    delayMs: 460,
-                    onTap: () => Navigator.pushNamed(context, AppRoutes.conges),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-          ],
-        ),
+          ),
+        ],
       ),
       bottomNavigationBar: AppBottomNavBar(
         currentIndex: _currentTabIndex,
         notifCount: auth.unreadNotifications,
         onTap: _onBottomNavTapped,
+      ),
+    );
+  }
+
+  Widget _buildHeaderActionButton({
+    required IconData icon,
+    String? label,
+    int badgeCount = 0,
+    required VoidCallback onTap,
+  }) {
+    return _InteractivePressCard(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: label != null ? 12 : 10, vertical: 9),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF1E3820).withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 18, color: AppColors.forestGreen),
+                if (label != null) ...[
+                  const SizedBox(width: 5),
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.forestGreen,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            if (badgeCount > 0)
+              Positioned(
+                top: -5,
+                right: -6,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: const BoxDecoration(
+                    color: AppColors.error,
+                    shape: BoxShape.circle,
+                  ),
+                  constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                  child: Text(
+                    badgeCount > 9 ? '9+' : badgeCount.toString(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeroPharmaciesCard({required VoidCallback onTap}) {
+    return _InteractivePressCard(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(24),
+      child: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF163820), Color(0xFF0F2916)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: AppColors.primaryGreen.withValues(alpha: 0.35), width: 1.4),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF0F2916).withValues(alpha: 0.40),
+              blurRadius: 28,
+              offset: const Offset(0, 12),
+            ),
+          ],
+        ),
+        child: Stack(
+          children: [
+            Positioned(
+              right: -20,
+              top: -20,
+              child: Container(
+                width: 150,
+                height: 150,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.primaryGreen.withValues(alpha: 0.18),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(18),
+              child: Row(
+                children: [
+                  Container(
+                    width: 54,
+                    height: 54,
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(18),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.20),
+                          blurRadius: 14,
+                          offset: const Offset(0, 5),
+                        ),
+                      ],
+                    ),
+                    child: Image.asset(
+                      'assets/images/icone-40.png',
+                      fit: BoxFit.contain,
+                      errorBuilder: (ctx, err, stack) => const Icon(
+                        LucideIcons.mapPin,
+                        color: AppColors.primaryGreen,
+                        size: 28,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Text(
+                              'Pharmacies & Gardes',
+                              style: TextStyle(
+                                fontSize: 16.5,
+                                fontWeight: FontWeight.w900,
+                                color: Colors.white,
+                                letterSpacing: -0.3,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: const Color(0xFF4ADE80),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFF4ADE80).withValues(alpha: 0.8),
+                                    blurRadius: 8,
+                                    spreadRadius: 2,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          'Trouver la pharmacie ouverte & tour de garde',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white.withValues(alpha: 0.78),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      gradient: AppColors.primaryGradient,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primaryGreen.withValues(alpha: 0.45),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(LucideIcons.chevronRight, color: Colors.white, size: 20),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -501,57 +766,120 @@ class _HomePharmacienScreenState extends State<HomePharmacienScreen> {
   }) {
     return _InteractivePressCard(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(22),
+      borderRadius: BorderRadius.circular(24),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: const Color(0xFFF1F5F9), width: 1.5),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: const Color(0xFFE8EEF5), width: 1.2),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF244082).withValues(alpha: 0.08),
+              color: const Color(0xFF1E3820).withValues(alpha: 0.06),
               blurRadius: 20,
-              offset: const Offset(0, 6),
+              offset: const Offset(0, 7),
             ),
           ],
         ),
         child: Stack(
           children: [
-            // Center icon & label
             Align(
               alignment: Alignment.center,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Container(
-                    width: 52,
-                    height: 52,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [AppColors.primaryGreen, Color(0xFF5D8A38)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(17),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.primaryGreen.withValues(alpha: 0.35),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
+                  // Modern Green Glossy Squircle with specular reflection & layered bloom
+                  Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      // Soft background halo
+                      Container(
+                        width: 58,
+                        height: 58,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: const Color(0xFF71A246).withValues(alpha: 0.12),
                         ),
-                      ],
-                    ),
-                    child: useAssetImage
-                        ? Padding(
-                            padding: const EdgeInsets.all(8),
-                            child: Image.asset(
-                              'assets/images/icone-40.png',
-                              fit: BoxFit.contain,
-                              errorBuilder: (ctx, err, stack) => const Icon(LucideIcons.mapPin, color: Colors.white, size: 26),
+                      ),
+                      // Main Squircle with gloss border & 3D gradient
+                      Container(
+                        width: 54,
+                        height: 54,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF7CB84E), Color(0xFF5A8736)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.35),
+                            width: 1.2,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF71A246).withValues(alpha: 0.40),
+                              blurRadius: 14,
+                              offset: const Offset(0, 6),
                             ),
-                          )
-                        : Icon(icon, color: Colors.white, size: 26),
+                            BoxShadow(
+                              color: const Color(0xFF163820).withValues(alpha: 0.15),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(17),
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              // Gloss specular shine
+                              Positioned(
+                                top: -10,
+                                left: -10,
+                                right: -10,
+                                height: 34,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        Colors.white.withValues(alpha: 0.32),
+                                        Colors.white.withValues(alpha: 0.0),
+                                      ],
+                                      begin: Alignment.topCenter,
+                                      end: Alignment.bottomCenter,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              // Content: Asset or Icon with micro-shadow
+                              useAssetImage
+                                  ? Padding(
+                                      padding: const EdgeInsets.all(9),
+                                      child: Image.asset(
+                                        'assets/images/icone-40.png',
+                                        fit: BoxFit.contain,
+                                        errorBuilder: (ctx, err, stack) => const Icon(LucideIcons.mapPin, color: Colors.white, size: 26),
+                                      ),
+                                    )
+                                  : Icon(
+                                      icon,
+                                      color: Colors.white,
+                                      size: 26,
+                                      shadows: [
+                                        Shadow(
+                                          color: Colors.black.withValues(alpha: 0.22),
+                                          offset: const Offset(0, 1.5),
+                                          blurRadius: 3,
+                                        ),
+                                      ],
+                                    ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 10),
                   Text(
@@ -560,22 +888,22 @@ class _HomePharmacienScreenState extends State<HomePharmacienScreen> {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: 13,
+                      fontSize: 12.5,
                       fontWeight: FontWeight.w700,
                       color: Color(0xFF1E293B),
-                      height: 1.25,
+                      height: 1.2,
                       letterSpacing: -0.2,
                     ),
                   ),
                   if (sublabel != null) ...[
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 2),
                     Text(
                       sublabel,
                       textAlign: TextAlign.center,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontSize: 11,
+                        fontSize: 10.5,
                         fontWeight: FontWeight.w500,
                         color: Color(0xFF64748B),
                       ),
@@ -585,7 +913,7 @@ class _HomePharmacienScreenState extends State<HomePharmacienScreen> {
               ),
             ),
 
-            // Red unread notification count badge (matches React hp-badge)
+            // Red unread notification count badge
             if (badgeCount != null && badgeCount > 0)
               Positioned(
                 top: 0,
@@ -610,7 +938,7 @@ class _HomePharmacienScreenState extends State<HomePharmacienScreen> {
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 10.5,
+                      fontSize: 10,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
@@ -618,6 +946,134 @@ class _HomePharmacienScreenState extends State<HomePharmacienScreen> {
               ),
           ],
         ),
+      ),
+    ).animate().fadeIn(delay: Duration(milliseconds: delayMs), duration: 350.ms).slideY(begin: 0.08);
+  }
+
+  Widget _buildAIBannerCard({required VoidCallback onTap}) {
+    return _InteractivePressCard(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(22),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: AppColors.primaryGreen.withValues(alpha: 0.35), width: 1.4),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primaryGreen.withValues(alpha: 0.09),
+              blurRadius: 18,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                gradient: AppColors.primaryGradient,
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primaryGreen.withValues(alpha: 0.30),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: const Icon(LucideIcons.bot, color: Colors.white, size: 22),
+            ),
+            const SizedBox(width: 13),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Ibn Jezzar — Assistant IA',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.forestGreen,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    'Posez vos questions sur la législation & pratiques',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: AppColors.primaryGreen.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(LucideIcons.arrowRight, color: AppColors.primaryGreen, size: 16),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProHealthTipCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F7EC),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.primaryGreen.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(LucideIcons.sparkles, color: AppColors.primaryGreen, size: 18),
+          ),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Conseil & Vigilance Officinale',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.forestGreen,
+                  ),
+                ),
+                SizedBox(height: 3),
+                Text(
+                  'Vérifiez la conformité des ordonnances et signalez tout événement indésirable sur le portail CNOPT.',
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    height: 1.35,
+                    color: AppColors.textSubtitle,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -651,8 +1107,8 @@ class _InteractivePressCardState extends State<_InteractivePressCard> {
       },
       onTapCancel: () => setState(() => _isPressed = false),
       child: AnimatedScale(
-        scale: _isPressed ? 0.95 : 1.0,
-        duration: const Duration(milliseconds: 140),
+        scale: _isPressed ? 0.96 : 1.0,
+        duration: const Duration(milliseconds: 130),
         curve: Curves.easeInOutCubic,
         child: widget.child,
       ),
