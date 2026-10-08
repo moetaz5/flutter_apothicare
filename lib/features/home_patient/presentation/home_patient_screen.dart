@@ -416,17 +416,17 @@ class _HomePatientScreenState extends State<HomePatientScreen> {
             ),
 
             Padding(
-              padding: const EdgeInsets.all(18),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
               child: Row(
                 children: [
                   // Logo container with crisp white badge & subtle shadow
                   Container(
-                    width: 54,
-                    height: 54,
-                    padding: const EdgeInsets.all(8),
+                    width: 50,
+                    height: 50,
+                    padding: const EdgeInsets.all(7),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(18),
+                      borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withValues(alpha: 0.20),
@@ -441,11 +441,11 @@ class _HomePatientScreenState extends State<HomePatientScreen> {
                       errorBuilder: (ctx, err, stack) => const Icon(
                         LucideIcons.mapPin,
                         color: AppColors.primaryGreen,
-                        size: 28,
+                        size: 26,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 14),
+                  const SizedBox(width: 12),
 
                   // Text Info
                   Expanded(
@@ -454,16 +454,20 @@ class _HomePatientScreenState extends State<HomePatientScreen> {
                       children: [
                         Row(
                           children: [
-                            const Text(
-                              'Pharmacies',
-                              style: TextStyle(
-                                fontSize: 16.5,
-                                fontWeight: FontWeight.w900,
-                                color: Colors.white,
-                                letterSpacing: -0.3,
+                            const Flexible(
+                              child: Text(
+                                'Pharmacies',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w900,
+                                  color: Colors.white,
+                                  letterSpacing: -0.3,
+                                ),
                               ),
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: 6),
                             // Pulsing live indicator
                             Container(
                               width: 8,
@@ -485,8 +489,10 @@ class _HomePatientScreenState extends State<HomePatientScreen> {
                         const SizedBox(height: 3),
                         Text(
                           'Trouver la pharmacie ouverte',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 11.5,
                             fontWeight: FontWeight.w500,
                             color: Colors.white.withValues(alpha: 0.78),
                           ),
@@ -494,11 +500,12 @@ class _HomePatientScreenState extends State<HomePatientScreen> {
                       ],
                     ),
                   ),
+                  const SizedBox(width: 8),
 
                   // Right Action Circle
                   Container(
-                    width: 38,
-                    height: 38,
+                    width: 36,
+                    height: 36,
                     decoration: BoxDecoration(
                       gradient: AppColors.primaryGradient,
                       shape: BoxShape.circle,
@@ -510,7 +517,7 @@ class _HomePatientScreenState extends State<HomePatientScreen> {
                         ),
                       ],
                     ),
-                    child: const Icon(LucideIcons.chevronRight, color: Colors.white, size: 20),
+                    child: const Icon(LucideIcons.chevronRight, color: Colors.white, size: 18),
                   ),
                 ],
               ),
