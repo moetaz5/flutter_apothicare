@@ -78,5 +78,12 @@
 	<string>Apothicare utilise la caméra pour scanner les QR codes et ordonnances.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Apothicare a besoin d'accéder à votre galerie pour importer des ordonnances et photos de profil.</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+		<key>NSAllowsArbitraryLoadsInWebContent</key>
+		<true/>
+	</dict>
 </dict>
 </plist>

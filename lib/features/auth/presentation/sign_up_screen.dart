@@ -376,28 +376,72 @@ class _SignUpScreenState extends State<SignUpScreen> {
     final password = _passwordController.text.trim();
     final confirmPassword = _confirmPasswordController.text.trim();
 
-    if (nom.isEmpty || email.isEmpty || _selectedGouvernorat == null || _selectedDate == null || password.isEmpty || confirmPassword.isEmpty) {
-      AppToast.showError('Veuillez remplir tous les champs obligatoires.');
+    // 1. Validation Nom
+    if (nom.isEmpty) {
+      AppToast.showError('Veuillez renseigner votre nom et prénom.');
       return;
     }
 
+    // 2. Validation Gouvernorat
+    if (_selectedGouvernorat == null) {
+      AppToast.showError('Veuillez sélectionner votre gouvernorat.');
+      return;
+    }
+
+    // 3. Validation Date de naissance
+    if (_selectedDate == null) {
+      AppToast.showError('Veuillez sélectionner votre date de naissance.');
+      return;
+    }
+
+    // 4. Validation CIN
+    if (cin.isEmpty) {
+      AppToast.showError('Veuillez renseigner les 3 derniers chiffres de votre CIN.');
+      return;
+    }
+    if (cin.length != 3 || !RegExp(r'^\d{3}$').hasMatch(cin)) {
+      AppToast.showError('Le champ CIN doit comporter exactement 3 chiffres.');
+      return;
+    }
+
+    // 5. Validation Email / Login
+    if (email.isEmpty) {
+      AppToast.showError('Veuillez renseigner votre adresse e-mail.');
+      return;
+    }
+    final emailRegExp = RegExp(r'^[\w\.-]+@([\w-]+\.)+[\w-]{2,}$');
+    if (!emailRegExp.hasMatch(email)) {
+      AppToast.showError('Format d\'adresse e-mail invalide (ex: exemple@gmail.com).');
+      return;
+    }
+
+    // 6. Validation Mot de passe
+    if (password.isEmpty) {
+      AppToast.showError('Veuillez saisir votre mot de passe.');
+      return;
+    }
+    if (password.length < 6) {
+      AppToast.showError('Le mot de passe doit contenir au moins 6 caractères.');
+      return;
+    }
+    if (confirmPassword.isEmpty) {
+      AppToast.showError('Veuillez confirmer votre mot de passe.');
+      return;
+    }
     if (password != confirmPassword) {
-      AppToast.showError('Les mots de passe ne correspondent pas.');
+      AppToast.showError('Les mots de passe saisis ne correspondent pas.');
       return;
     }
 
-    if (cin.length != 3) {
-      AppToast.showError('Le CIN doit contenir exactement 3 chiffres (les derniers chiffres).');
-      return;
-    }
-
+    // 7. Validation Captcha
     if (!_captchaChecked) {
-      AppToast.showError('Veuillez cocher la case "Je ne suis pas un robot".');
+      AppToast.showError('Veuillez cocher la vérification « Je ne suis pas un robot ».');
       return;
     }
 
+    // 8. Validation Conditions
     if (!_acceptedTerms) {
-      AppToast.showError('Veuillez accepter les conditions d\'utilisation.');
+      AppToast.showError('Veuillez accepter les conditions d\'utilisation d\'Apothicare.');
       return;
     }
 
@@ -430,7 +474,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
     if (mounted) {
       if (success) {
-        AppToast.showSuccess('Inscription réussie ! Veuillez vous connecter.');
+        AppToast.showSuccess('Inscription réussie ! Vous pouvez maintenant vous connecter.');
         Navigator.pop(context);
       } else {
         AppToast.showError(auth.errorMessage ?? 'Erreur lors de l\'inscription.');

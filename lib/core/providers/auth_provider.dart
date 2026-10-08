@@ -129,11 +129,115 @@ class AuthProvider extends ChangeNotifier {
     try {
       final response = await _api.post('user/addInscription', data: registrationData);
       _isLoading = false;
+
+      // Check response body for backend specific messages / errors
+      if (response.data is Map) {
+        final data = response.data as Map<String, dynamic>;
+        
+        // If backend returned message
+        if (data.containsKey('message') && data['message'] != null && data['message'].toString().trim().isNotEmpty) {
+          final msg = data['message'].toString().trim();
+          if (msg.toLowerCase().contains('succ') || msg.toLowerCase().contains('réussi')) {
+            notifyListeners();
+            return true;
+          } else {
+            _errorMessage = msg;
+            notifyListeners();
+            return false;
+          }
+        }
+
+        // If backend returned error
+        if (data.containsKey('error') && data['error'] != null && data['error'].toString().trim().isNotEmpty) {
+          _errorMessage = data['error'].toString().trim();
+          notifyListeners();
+          return false;
+        }
+
+        if (data.containsKey('msg') && data['msg'] != null && data['msg'].toString().trim().isNotEmpty) {
+          final msg = data['msg'].toString().trim();
+          if (!msg.toLowerCase().contains('succ') && !msg.toLowerCase().contains('réussi')) {
+            _errorMessage = msg;
+            notifyListeners();
+            return false;
+          }
+        }
+      } else if (response.data is String) {
+        final str = (response.data as String).trim();
+        if (str.startsWith('{') && str.endsWith('}')) {
+          try {
+            final parsed = jsonDecode(str);
+            if (parsed is Map) {
+              if (parsed['message'] != null) {
+                final msg = parsed['message'].toString().trim();
+                if (!msg.toLowerCase().contains('succ') && !msg.toLowerCase().contains('réussi')) {
+                  _errorMessage = msg;
+                  notifyListeners();
+                  return false;
+                }
+              }
+              if (parsed['error'] != null) {
+                _errorMessage = parsed['error'].toString().trim();
+                notifyListeners();
+                return false;
+              }
+            }
+          } catch (_) {}
+        }
+      }
+
+      // Check HTTP status code
+      if (response.statusCode != null && response.statusCode! >= 400) {
+        if (response.statusCode == 409) {
+          _errorMessage = "Ce compte ou cette adresse e-mail existe déjà.";
+        } else if (response.statusCode == 400) {
+          _errorMessage = "Données d'inscription invalides ou incomplètes.";
+        } else if (response.statusCode == 401 || response.statusCode == 403) {
+          _errorMessage = "Action non autorisée.";
+        } else if (response.statusCode == 404) {
+          _errorMessage = "Service d'inscription introuvable sur le serveur (404).";
+        } else if (response.statusCode! >= 500) {
+          _errorMessage = "Erreur interne du serveur (${response.statusCode}). Veuillez réessayer plus tard.";
+        } else {
+          _errorMessage = "Erreur HTTP ${response.statusCode} lors de l'inscription.";
+        }
+        notifyListeners();
+        return false;
+      }
+
       notifyListeners();
-      return response.statusCode == 200 || response.statusCode == 201;
-    } catch (e) {
-      _errorMessage = 'Erreur lors de l\'inscription.';
+      return true;
+    } on DioException catch (e) {
       _isLoading = false;
+      if (e.response != null) {
+        final resData = e.response?.data;
+        if (resData is Map && resData['message'] != null) {
+          _errorMessage = resData['message'].toString().trim();
+        } else if (resData is Map && resData['error'] != null) {
+          _errorMessage = resData['error'].toString().trim();
+        } else if (e.response?.statusCode == 409) {
+          _errorMessage = "Ce compte ou cet e-mail est déjà enregistré.";
+        } else if (e.response?.statusCode == 400) {
+          _errorMessage = "Informations invalides ou incomplètes.";
+        } else if (e.response?.statusCode != null && e.response!.statusCode! >= 500) {
+          _errorMessage = "Erreur du serveur (${e.response?.statusCode}). Veuillez réessayer plus tard.";
+        } else {
+          _errorMessage = "Erreur serveur : ${e.response?.statusCode ?? 'Inconnue'}.";
+        }
+      } else if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.sendTimeout ||
+          e.type == DioExceptionType.receiveTimeout) {
+        _errorMessage = "Délai d'attente dépassé. Vérifiez votre connexion internet.";
+      } else if (e.type == DioExceptionType.connectionError) {
+        _errorMessage = "Impossible de contacter le serveur. Vérifiez votre connexion internet.";
+      } else {
+        _errorMessage = "Erreur de connexion : ${e.message ?? 'Connexion interrompue.'}";
+      }
+      notifyListeners();
+      return false;
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = "Erreur : $e";
       notifyListeners();
       return false;
     }
