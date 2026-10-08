@@ -61,7 +61,7 @@ class _HomePatientScreenState extends State<HomePatientScreen> {
       builder: (ctx) => AlertDialog(
         title: const Text('Déconnexion', style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.forestGreen)),
         content: const Text('Êtes-vous sûr de vouloir vous déconnecter ?'),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
@@ -90,9 +90,9 @@ class _HomePatientScreenState extends State<HomePatientScreen> {
 
   String _getGreeting() {
     final hour = DateTime.now().hour;
-    if (hour >= 5 && hour < 12) return 'Bonjour 👋';
-    if (hour >= 12 && hour < 18) return 'Bon après-midi 👋';
-    return 'Bonne soirée 🌙';
+    if (hour >= 5 && hour < 12) return 'Bonjour';
+    if (hour >= 12 && hour < 18) return 'Bon après-midi';
+    return 'Bonne soirée';
   }
 
   @override
@@ -102,31 +102,41 @@ class _HomePatientScreenState extends State<HomePatientScreen> {
     final displayName = user?.displayName ?? 'Patient';
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF6FAF3),
+      backgroundColor: const Color(0xFFF4F7F2),
       body: Stack(
         children: [
-          // Background ambient gradient and glowing orbs
+          // ─── AMBIENT BACKGROUND GRADIENT ORBS ───
           Positioned(
-            top: -60,
-            right: -50,
+            top: -80,
+            right: -60,
             child: Container(
-              width: 240,
-              height: 240,
+              width: 280,
+              height: 280,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppColors.primaryGreen.withValues(alpha: 0.14),
+                gradient: RadialGradient(
+                  colors: [
+                    AppColors.primaryGreen.withValues(alpha: 0.20),
+                    AppColors.primaryGreen.withValues(alpha: 0.0),
+                  ],
+                ),
               ),
             ),
           ),
           Positioned(
-            top: 140,
-            left: -80,
+            top: 220,
+            left: -100,
             child: Container(
-              width: 200,
-              height: 200,
+              width: 260,
+              height: 260,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0xFF244082).withValues(alpha: 0.05),
+                gradient: RadialGradient(
+                  colors: [
+                    const Color(0xFF3B82F6).withValues(alpha: 0.08),
+                    Colors.transparent,
+                  ],
+                ),
               ),
             ),
           ),
@@ -135,251 +145,200 @@ class _HomePatientScreenState extends State<HomePatientScreen> {
             bottom: false,
             child: SingleChildScrollView(
               controller: _scrollController,
-              padding: const EdgeInsets.only(bottom: 100),
+              padding: const EdgeInsets.only(bottom: 110),
               physics: const BouncingScrollPhysics(),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // ─── TOP APP BAR & USER HERO SECTION ───
+                  // ─── UNIFIED SLEEK HEADER BAR ───
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
-                    child: Column(
+                    padding: const EdgeInsets.fromLTRB(20, 14, 20, 16),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // Top bar: Brand pill + Quick actions
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            // Brand badge
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(30),
-                                border: Border.all(color: AppColors.primaryGreen.withValues(alpha: 0.2)),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: AppColors.primaryGreen.withValues(alpha: 0.08),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Image.asset('assets/images/logo1.png', width: 18, height: 18, fit: BoxFit.contain),
-                                  const SizedBox(width: 7),
-                                  const Text(
-                                    'APOTHICARE',
-                                    style: TextStyle(
-                                      fontSize: 11.5,
-                                      fontWeight: FontWeight.w900,
-                                      color: AppColors.forestGreen,
-                                      letterSpacing: 0.8,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ).animate().fadeIn(duration: 300.ms).slideX(begin: -0.1),
-
-                            // Right quick actions: QR Scanner & Profile
-                            Row(
-                              children: [
-                                // QR Scanner Quick Action
-                                _buildHeaderCircleAction(
-                                  icon: LucideIcons.scanLine,
-                                  onTap: () => Navigator.pushNamed(context, AppRoutes.qrScanner),
-                                ),
-                                const SizedBox(width: 8),
-                                // Actualités Quick Action
-                                _buildHeaderCircleAction(
-                                  icon: LucideIcons.newspaper,
-                                  onTap: () => Navigator.pushNamed(context, AppRoutes.actualites),
-                                ),
-                              ],
-                            ).animate().fadeIn(duration: 300.ms).slideX(begin: 0.1),
-                          ],
-                        ),
-                        const SizedBox(height: 18),
-
-                        // User profile card banner (Glassmorphism & Clean elevation)
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(18),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(24),
-                            border: Border.all(color: Colors.white, width: 2),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFF1E3820).withValues(alpha: 0.06),
-                                blurRadius: 24,
-                                offset: const Offset(0, 8),
-                              ),
-                            ],
-                          ),
+                        // User info with glowing avatar
+                        InkWell(
+                          onTap: () => Navigator.pushNamed(context, AppRoutes.profile),
+                          borderRadius: BorderRadius.circular(30),
                           child: Row(
                             children: [
-                              // Glowing Avatar
                               RotatingGlowingAvatar(
                                 user: user,
-                                size: 68,
+                                size: 52,
                                 showCameraBadge: false,
                                 onTap: () => Navigator.pushNamed(context, AppRoutes.profile),
                               ),
-                              const SizedBox(width: 16),
-
-                              // Greeting & Info
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.primaryGreen.withValues(alpha: 0.12),
-                                        borderRadius: BorderRadius.circular(20),
-                                      ),
-                                      child: Text(
-                                        _getGreeting(),
+                              const SizedBox(width: 12),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Text(
+                                        '${_getGreeting()} 👋',
                                         style: const TextStyle(
+                                          fontSize: 12.5,
+                                          fontWeight: FontWeight.w600,
                                           color: AppColors.primaryGreenDark,
-                                          fontSize: 11.5,
-                                          fontWeight: FontWeight.w700,
                                         ),
                                       ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 1),
+                                  Text(
+                                    displayName,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w900,
+                                      color: AppColors.forestGreen,
+                                      letterSpacing: -0.4,
                                     ),
-                                    const SizedBox(height: 5),
-                                    Text(
-                                      displayName,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.w800,
-                                        color: AppColors.forestGreen,
-                                        letterSpacing: -0.4,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    const Text(
-                                      'Espace Patient CNOPT',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w500,
-                                        color: AppColors.textSecondary,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-
-                              // Profile Arrow
-                              IconButton(
-                                onPressed: () => Navigator.pushNamed(context, AppRoutes.profile),
-                                icon: const Icon(LucideIcons.chevronRight, color: AppColors.primaryGreen, size: 22),
-                                style: IconButton.styleFrom(
-                                  backgroundColor: const Color(0xFFF7FAF4),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
-                        ).animate().fadeIn(delay: 150.ms, duration: 400.ms).slideY(begin: 0.08),
+                        ).animate().fadeIn(duration: 350.ms).slideX(begin: -0.1),
+
+                        // Header Actions (Quick Scan & Notifications)
+                        Row(
+                          children: [
+                            _buildHeaderActionButton(
+                              icon: LucideIcons.scanLine,
+                              label: 'Scan',
+                              onTap: () => Navigator.pushNamed(context, AppRoutes.qrScanner),
+                            ),
+                            const SizedBox(width: 8),
+                            _buildHeaderActionButton(
+                              icon: LucideIcons.bell,
+                              badgeCount: auth.unreadNotifications,
+                              onTap: () => Navigator.pushNamed(context, AppRoutes.actualites),
+                            ),
+                          ],
+                        ).animate().fadeIn(duration: 350.ms).slideX(begin: 0.1),
                       ],
                     ),
                   ),
 
-                  // ─── HERO FEATURE CARD (PHARMACIES DE GARDE) ───
+                  // ─── HERO FEATURE CARD: PHARMACIES DE GARDE (LIVE RADAR) ───
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
                     child: _buildHeroPharmaciesCard(
                       onTap: () => Navigator.pushNamed(context, AppRoutes.gardesMap),
-                    ).animate().fadeIn(delay: 250.ms, duration: 400.ms).scale(begin: const Offset(0.96, 0.96)),
+                    ).animate().fadeIn(delay: 150.ms, duration: 400.ms).scale(begin: const Offset(0.97, 0.97)),
                   ),
-                  const SizedBox(height: 22),
+                  const SizedBox(height: 20),
 
-                  // ─── SERVICES & BENTO ACTION GRID ───
+                  // ─── SERVICES TITLE ───
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Row(
-                          children: [
-                            Text(
-                              'Mes Services Santé',
-                              style: TextStyle(
-                                fontSize: 17,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.forestGreen,
-                                letterSpacing: -0.3,
-                              ),
-                            ),
-                          ],
+                        const Text(
+                          'Services & Suivi Santé',
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w900,
+                            color: AppColors.forestGreen,
+                            letterSpacing: -0.3,
+                          ),
                         ),
-                        const SizedBox(height: 14),
-
-                        // Bento 2-Column Grid
-                        GridView.count(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 14,
-                          mainAxisSpacing: 14,
-                          childAspectRatio: 1.05,
-                          children: [
-                            _buildModernBentoCard(
-                              icon: LucideIcons.idCard,
-                              title: 'Profil santé',
-                              subtitle: 'Carte de soin & infos',
-                              accentColor: const Color(0xFF71A246),
-                              bgTint: const Color(0xFFF4F9EE),
-                              delayMs: 300,
-                              onTap: () => Navigator.pushNamed(context, AppRoutes.carteSoin),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: AppColors.primaryGreen.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Text(
+                            'CNOPT Certifié',
+                            style: TextStyle(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primaryGreenDark,
                             ),
-                            _buildModernBentoCard(
-                              icon: LucideIcons.checkCheck,
-                              title: 'Mes traitements',
-                              subtitle: 'Suivi & observance',
-                              accentColor: const Color(0xFF10B981),
-                              bgTint: const Color(0xFFF0FDF4),
-                              delayMs: 350,
-                              onTap: () => Navigator.pushNamed(context, AppRoutes.observance),
-                            ),
-                            _buildModernBentoCard(
-                              icon: LucideIcons.fileText,
-                              title: 'Dossier médical',
-                              subtitle: 'Ordonnances & reçus',
-                              accentColor: const Color(0xFF3B82F6),
-                              bgTint: const Color(0xFFEFF6FF),
-                              delayMs: 400,
-                              onTap: () => Navigator.pushNamed(context, AppRoutes.dossierPatient),
-                            ),
-                            _buildModernBentoCard(
-                              icon: LucideIcons.graduationCap,
-                              title: 'Éducation',
-                              subtitle: 'Guides & conseils',
-                              accentColor: const Color(0xFF8B5CF6),
-                              bgTint: const Color(0xFFFAF5FF),
-                              delayMs: 450,
-                              onTap: () => Navigator.pushNamed(context, AppRoutes.educationTherapeutique),
-                            ),
-                          ],
+                          ),
                         ),
-                        const SizedBox(height: 14),
-
-                        // Featured Wide Scanner Card
-                        _buildScannerBannerCard(
-                          onTap: () => Navigator.pushNamed(context, AppRoutes.qrScanner),
-                        ).animate().fadeIn(delay: 500.ms, duration: 400.ms),
-
-                        const SizedBox(height: 18),
-
-                        // Daily Health Tip Card
-                        _buildDailyHealthTipCard().animate().fadeIn(delay: 550.ms, duration: 400.ms),
                       ],
                     ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // ─── 2X2 MODERN BENTO ACTION TILES ───
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: GridView.count(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 14,
+                      mainAxisSpacing: 14,
+                      childAspectRatio: 0.98,
+                      children: [
+                        _buildModernBentoCard(
+                          icon: LucideIcons.idCard,
+                          title: 'Profil Santé',
+                          subtitle: 'Carte numérique & infos',
+                          badgeText: 'Carte',
+                          gradientColors: const [Color(0xFFF2F9ED), Color(0xFFFFFFFF)],
+                          accentColor: const Color(0xFF71A246),
+                          iconBgColor: const Color(0xFF71A246),
+                          delayMs: 200,
+                          onTap: () => Navigator.pushNamed(context, AppRoutes.carteSoin),
+                        ),
+                        _buildModernBentoCard(
+                          icon: LucideIcons.checkCheck,
+                          title: 'Mes Traitements',
+                          subtitle: 'Observance & prises',
+                          badgeText: 'Suivi',
+                          gradientColors: const [Color(0xFFECFDF5), Color(0xFFFFFFFF)],
+                          accentColor: const Color(0xFF10B981),
+                          iconBgColor: const Color(0xFF10B981),
+                          delayMs: 250,
+                          onTap: () => Navigator.pushNamed(context, AppRoutes.observance),
+                        ),
+                        _buildModernBentoCard(
+                          icon: LucideIcons.fileText,
+                          title: 'Dossier Médical',
+                          subtitle: 'Ordonnances & reçus',
+                          badgeText: 'Documents',
+                          gradientColors: const [Color(0xFFEFF6FF), Color(0xFFFFFFFF)],
+                          accentColor: const Color(0xFF3B82F6),
+                          iconBgColor: const Color(0xFF3B82F6),
+                          delayMs: 300,
+                          onTap: () => Navigator.pushNamed(context, AppRoutes.dossierPatient),
+                        ),
+                        _buildModernBentoCard(
+                          icon: LucideIcons.graduationCap,
+                          title: 'Éducation',
+                          subtitle: 'Guides & quiz santé',
+                          badgeText: 'Conseils',
+                          gradientColors: const [Color(0xFFFAF5FF), Color(0xFFFFFFFF)],
+                          accentColor: const Color(0xFF8B5CF6),
+                          iconBgColor: const Color(0xFF8B5CF6),
+                          delayMs: 350,
+                          onTap: () => Navigator.pushNamed(context, AppRoutes.educationTherapeutique),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // ─── QUICK SCANNER ACTION BANNER ───
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: _buildScannerBannerCard(
+                      onTap: () => Navigator.pushNamed(context, AppRoutes.qrScanner),
+                    ).animate().fadeIn(delay: 400.ms, duration: 400.ms),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // ─── DAILY HEALTH ADVICE WIDGET ───
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: _buildDailyHealthTipCard().animate().fadeIn(delay: 450.ms, duration: 400.ms),
                   ),
                 ],
               ),
@@ -395,26 +354,73 @@ class _HomePatientScreenState extends State<HomePatientScreen> {
     );
   }
 
-  Widget _buildHeaderCircleAction({required IconData icon, required VoidCallback onTap}) {
-    return Container(
-      width: 42,
-      height: 42,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        shape: BoxShape.circle,
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: IconButton(
-        icon: Icon(icon, size: 20, color: AppColors.forestGreen),
-        onPressed: onTap,
-        padding: EdgeInsets.zero,
+  Widget _buildHeaderActionButton({
+    required IconData icon,
+    String? label,
+    int badgeCount = 0,
+    required VoidCallback onTap,
+  }) {
+    return _InteractivePressCard(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: label != null ? 12 : 10, vertical: 9),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF1E3820).withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 18, color: AppColors.forestGreen),
+                if (label != null) ...[
+                  const SizedBox(width: 5),
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.forestGreen,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            if (badgeCount > 0)
+              Positioned(
+                top: -5,
+                right: -6,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: const BoxDecoration(
+                    color: AppColors.error,
+                    shape: BoxShape.circle,
+                  ),
+                  constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                  child: Text(
+                    badgeCount > 9 ? '9+' : badgeCount.toString(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -432,48 +438,48 @@ class _HomePatientScreenState extends State<HomePatientScreen> {
             end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: AppColors.primaryGreen.withValues(alpha: 0.3), width: 1.4),
+          border: Border.all(color: AppColors.primaryGreen.withValues(alpha: 0.35), width: 1.4),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF0F2916).withValues(alpha: 0.38),
-              blurRadius: 26,
-              offset: const Offset(0, 10),
+              color: const Color(0xFF0F2916).withValues(alpha: 0.40),
+              blurRadius: 28,
+              offset: const Offset(0, 12),
             ),
           ],
         ),
         child: Stack(
           children: [
-            // Decorative background glowing circles
+            // Ambient glowing green light orb inside card
             Positioned(
-              right: -30,
-              top: -30,
+              right: -20,
+              top: -20,
               child: Container(
-                width: 140,
-                height: 140,
+                width: 150,
+                height: 150,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppColors.primaryGreen.withValues(alpha: 0.15),
+                  color: AppColors.primaryGreen.withValues(alpha: 0.18),
                 ),
               ),
             ),
 
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+              padding: const EdgeInsets.all(18),
               child: Row(
                 children: [
-                  // Logo container with glossy finish
+                  // Logo container with crisp white badge & subtle shadow
                   Container(
                     width: 54,
                     height: 54,
-                    padding: const EdgeInsets.all(7),
+                    padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(18),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.18),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
+                          color: Colors.black.withValues(alpha: 0.20),
+                          blurRadius: 14,
+                          offset: const Offset(0, 5),
                         ),
                       ],
                     ),
@@ -487,9 +493,9 @@ class _HomePatientScreenState extends State<HomePatientScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 15),
+                  const SizedBox(width: 14),
 
-                  // Text info
+                  // Text Info
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -506,7 +512,7 @@ class _HomePatientScreenState extends State<HomePatientScreen> {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            // Pulsing green live dot
+                            // Pulsing live indicator
                             Container(
                               width: 8,
                               height: 8,
@@ -515,7 +521,7 @@ class _HomePatientScreenState extends State<HomePatientScreen> {
                                 color: const Color(0xFF4ADE80),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: const Color(0xFF4ADE80).withValues(alpha: 0.7),
+                                    color: const Color(0xFF4ADE80).withValues(alpha: 0.8),
                                     blurRadius: 8,
                                     spreadRadius: 2,
                                   ),
@@ -524,20 +530,20 @@ class _HomePatientScreenState extends State<HomePatientScreen> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 3),
                         Text(
                           'Trouver la pharmacie ouverte la plus proche',
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w500,
-                            color: Colors.white.withValues(alpha: 0.75),
+                            color: Colors.white.withValues(alpha: 0.78),
                           ),
                         ),
                       ],
                     ),
                   ),
 
-                  // Arrow button
+                  // Right Action Circle
                   Container(
                     width: 38,
                     height: 38,
@@ -546,7 +552,7 @@ class _HomePatientScreenState extends State<HomePatientScreen> {
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.primaryGreen.withValues(alpha: 0.4),
+                          color: AppColors.primaryGreen.withValues(alpha: 0.45),
                           blurRadius: 10,
                           offset: const Offset(0, 3),
                         ),
@@ -567,8 +573,10 @@ class _HomePatientScreenState extends State<HomePatientScreen> {
     required IconData icon,
     required String title,
     required String subtitle,
+    required String badgeText,
+    required List<Color> gradientColors,
     required Color accentColor,
-    required Color bgTint,
+    required Color iconBgColor,
     required int delayMs,
     required VoidCallback onTap,
   }) {
@@ -576,16 +584,20 @@ class _HomePatientScreenState extends State<HomePatientScreen> {
       onTap: onTap,
       borderRadius: BorderRadius.circular(22),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(15),
         decoration: BoxDecoration(
-          color: Colors.white,
+          gradient: LinearGradient(
+            colors: gradientColors,
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
           borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: const Color(0xFFE8EEF5), width: 1.2),
+          border: Border.all(color: Colors.white, width: 2),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF1E3820).withValues(alpha: 0.05),
-              blurRadius: 18,
-              offset: const Offset(0, 6),
+              color: const Color(0xFF1E3820).withValues(alpha: 0.06),
+              blurRadius: 20,
+              offset: const Offset(0, 7),
             ),
           ],
         ),
@@ -593,25 +605,46 @@ class _HomePatientScreenState extends State<HomePatientScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // Top row with colored icon container & subtle arrow
+            // Top Row: Colored Icon + Category Badge
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Container(
-                  width: 46,
-                  height: 46,
+                  width: 44,
+                  height: 44,
                   decoration: BoxDecoration(
-                    color: bgTint,
+                    color: iconBgColor,
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: accentColor.withValues(alpha: 0.25)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: iconBgColor.withValues(alpha: 0.35),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
-                  child: Icon(icon, color: accentColor, size: 22),
+                  child: Icon(icon, color: Colors.white, size: 22),
                 ),
-                Icon(LucideIcons.arrowUpRight, size: 18, color: Colors.grey.shade400),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.9),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: accentColor.withValues(alpha: 0.2)),
+                  ),
+                  child: Text(
+                    badgeText,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: accentColor,
+                    ),
+                  ),
+                ),
               ],
             ),
 
-            // Bottom text
+            // Bottom Text
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -619,7 +652,7 @@ class _HomePatientScreenState extends State<HomePatientScreen> {
                   title,
                   style: const TextStyle(
                     fontSize: 14.5,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w900,
                     color: AppColors.forestGreen,
                     letterSpacing: -0.2,
                   ),
@@ -630,8 +663,8 @@ class _HomePatientScreenState extends State<HomePatientScreen> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w500,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
                     color: AppColors.textSecondary,
                   ),
                 ),
@@ -640,7 +673,7 @@ class _HomePatientScreenState extends State<HomePatientScreen> {
           ],
         ),
       ),
-    ).animate().fadeIn(delay: Duration(milliseconds: delayMs), duration: 350.ms).slideY(begin: 0.1);
+    ).animate().fadeIn(delay: Duration(milliseconds: delayMs), duration: 350.ms).slideY(begin: 0.08);
   }
 
   Widget _buildScannerBannerCard({required VoidCallback onTap}) {
@@ -649,14 +682,14 @@ class _HomePatientScreenState extends State<HomePatientScreen> {
       borderRadius: BorderRadius.circular(22),
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(22),
           border: Border.all(color: AppColors.primaryGreen.withValues(alpha: 0.35), width: 1.4),
           boxShadow: [
             BoxShadow(
-              color: AppColors.primaryGreen.withValues(alpha: 0.10),
+              color: AppColors.primaryGreen.withValues(alpha: 0.09),
               blurRadius: 18,
               offset: const Offset(0, 6),
             ),
@@ -670,27 +703,35 @@ class _HomePatientScreenState extends State<HomePatientScreen> {
               decoration: BoxDecoration(
                 gradient: AppColors.primaryGradient,
                 borderRadius: BorderRadius.circular(14),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primaryGreen.withValues(alpha: 0.30),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
               ),
               child: const Icon(LucideIcons.qrCode, color: Colors.white, size: 22),
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: 13),
             const Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Scanner un produit',
+                    'Scanner un médicament ou QR Code',
                     style: TextStyle(
-                      fontSize: 14.5,
-                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
                       color: AppColors.forestGreen,
+                      letterSpacing: -0.2,
                     ),
                   ),
                   SizedBox(height: 2),
                   Text(
-                    'Scannez le QR Code de votre ordonnance ou boîte',
+                    'Vérification instantanée de notice & posologie',
                     style: TextStyle(
-                      fontSize: 11.5,
+                      fontSize: 11,
                       fontWeight: FontWeight.w500,
                       color: AppColors.textSecondary,
                     ),
@@ -698,7 +739,14 @@ class _HomePatientScreenState extends State<HomePatientScreen> {
                 ],
               ),
             ),
-            const Icon(LucideIcons.chevronRight, color: AppColors.primaryGreen, size: 20),
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: AppColors.primaryGreen.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(LucideIcons.arrowRight, color: AppColors.primaryGreen, size: 16),
+            ),
           ],
         ),
       ),
@@ -708,9 +756,9 @@ class _HomePatientScreenState extends State<HomePatientScreen> {
   Widget _buildDailyHealthTipCard() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
-        color: const Color(0xFFF0F7EB),
+        color: const Color(0xFFF1F7EC),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppColors.primaryGreen.withValues(alpha: 0.25)),
       ),
@@ -733,7 +781,7 @@ class _HomePatientScreenState extends State<HomePatientScreen> {
                 Text(
                   'Conseil Santé du Jour',
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: 12.5,
                     fontWeight: FontWeight.w800,
                     color: AppColors.forestGreen,
                   ),
@@ -793,5 +841,4 @@ class _InteractivePressCardState extends State<_InteractivePressCard> {
     );
   }
 }
-
 
