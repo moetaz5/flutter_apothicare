@@ -15,6 +15,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/messagerie_provider.dart';
 import '../../../core/routes/app_routes.dart';
+import '../../../core/services/websocket_service.dart';
 import '../../../core/storage/storage_service.dart';
 import '../../../shared/widgets/app_bottom_nav_bar.dart';
 import '../../../shared/widgets/app_loading_indicator.dart';
@@ -59,28 +60,41 @@ class _MessagerieScreenState extends State<MessagerieScreen> {
       _loadUsers();
     });
 
-    // Polling every 5 seconds for background sync
-    _pollingTimer = Timer.periodic(const Duration(seconds: 5), (_) {
-      if (!mounted) return;
-      final auth = context.read<AuthProvider>();
-      final currentId = auth.currentUser?.id;
-      if (currentId == null) return;
+    // Real-time instant WebSocket listener
+    WebSocketService().addListener(_onWebSocketIncoming);
 
-      final messagerie = context.read<MessagerieProvider>();
-      if (_activeChatUser != null) {
-        messagerie.fetchMessages(
-          idSender: currentId,
-          idReceiver: _activeChatUser!.id,
-          silent: true,
-        );
-      } else {
-        messagerie.fetchUnreadCounts(idReceiver: currentId);
-      }
+    // Polling fallback every 5 seconds
+    _pollingTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      _refreshCurrentChatOrUnread();
     });
+  }
+
+  void _onWebSocketIncoming(Map<String, dynamic> data) {
+    if (!mounted) return;
+    _refreshCurrentChatOrUnread();
+  }
+
+  void _refreshCurrentChatOrUnread() {
+    if (!mounted) return;
+    final auth = context.read<AuthProvider>();
+    final currentId = auth.currentUser?.id;
+    if (currentId == null) return;
+
+    final messagerie = context.read<MessagerieProvider>();
+    if (_activeChatUser != null) {
+      messagerie.fetchMessages(
+        idSender: currentId,
+        idReceiver: _activeChatUser!.id,
+        silent: true,
+      );
+    } else {
+      messagerie.fetchUnreadCounts(idReceiver: currentId);
+    }
   }
 
   @override
   void dispose() {
+    WebSocketService().removeListener(_onWebSocketIncoming);
     _pollingTimer?.cancel();
     _searchController.dispose();
     _newChatSearchController.dispose();

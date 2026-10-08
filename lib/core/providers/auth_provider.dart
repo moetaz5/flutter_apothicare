@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../models/user_model.dart';
 import '../network/api_client.dart';
 import '../services/notification_service.dart';
+import '../services/websocket_service.dart';
 import '../storage/storage_service.dart';
 
 class AuthProvider extends ChangeNotifier {
@@ -43,11 +44,23 @@ class AuthProvider extends ChangeNotifier {
     _notificationPollingTimer?.cancel();
     fetchUnreadNotifications();
     NotificationService.requestPermissions();
+
+    // Instant real-time WebSocket connection
+    WebSocketService().connect();
+    WebSocketService().addListener(_onWebSocketMessage);
+
     _notificationPollingTimer = Timer.periodic(const Duration(seconds: 15), (_) {
       if (isAuthenticated) {
         fetchUnreadNotifications();
       }
     });
+  }
+
+  void _onWebSocketMessage(Map<String, dynamic> data) {
+    if (isAuthenticated) {
+      debugPrint('[AuthProvider] Real-time message detected via WebSocket -> Fetching notifications instantly');
+      fetchUnreadNotifications();
+    }
   }
 
   void _stopNotificationPolling() {
@@ -56,6 +69,8 @@ class AuthProvider extends ChangeNotifier {
     _hasInitialFetchDone = false;
     _hasInitialMessageFetchDone = false;
     _unreadMessages = 0;
+    WebSocketService().removeListener(_onWebSocketMessage);
+    WebSocketService().disconnect();
   }
 
   bool _isFetchingNotifications = false;
