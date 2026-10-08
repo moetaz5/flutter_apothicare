@@ -20,11 +20,10 @@ class WebSocketService {
   static const List<String> _wsUrls = [
     'wss://www.apothicare.tn/',
     'ws://www.apothicare.tn:4001/',
-    'ws://localhost:4001/',
-    'ws://10.0.2.2:4001/',
   ];
 
   int _currentUrlIndex = 0;
+  int _consecutiveFailures = 0;
 
   /// Connect to the Apothicare real-time WebSocket server
   Future<void> connect() async {
@@ -34,10 +33,10 @@ class WebSocketService {
 
     final url = _wsUrls[_currentUrlIndex];
     try {
-      debugPrint('[WebSocketService] Connecting to $url ...');
-      _socket = await WebSocket.connect(url).timeout(const Duration(seconds: 4));
+      _socket = await WebSocket.connect(url).timeout(const Duration(seconds: 3));
       _isConnected = true;
       _isConnecting = false;
+      _consecutiveFailures = 0;
       debugPrint('[WebSocketService] Connected successfully to $url');
 
       _socket!.listen(
@@ -45,24 +44,20 @@ class WebSocketService {
           _handleIncomingMessage(event);
         },
         onDone: () {
-          debugPrint('[WebSocketService] Disconnected.');
           _onDisconnected();
         },
-        onError: (err) {
-          debugPrint('[WebSocketService] Error: $err');
+        onError: (_) {
           _onDisconnected();
         },
         cancelOnError: true,
       );
-    } catch (e) {
-      debugPrint('[WebSocketService] Connection failed to $url: $e');
+    } catch (_) {
       _onDisconnected();
     }
   }
 
   void _handleIncomingMessage(dynamic event) {
     try {
-      debugPrint('[WebSocketService] Frame received: $event');
       Map<String, dynamic> data = {};
       if (event is String) {
         final decoded = jsonDecode(event);
@@ -73,26 +68,24 @@ class WebSocketService {
       for (final listener in _messageListeners) {
         try {
           listener(data);
-        } catch (e) {
-          debugPrint('[WebSocketService] Listener error: $e');
-        }
+        } catch (_) {}
       }
-    } catch (e) {
-      debugPrint('[WebSocketService] Parse error: $e');
-    }
+    } catch (_) {}
   }
 
   void _onDisconnected() {
     _isConnected = false;
     _isConnecting = false;
     _socket = null;
-    
+    _consecutiveFailures++;
+
     // Rotate url index if failed
     _currentUrlIndex = (_currentUrlIndex + 1) % _wsUrls.length;
 
-    // Schedule auto-reconnect in 5 seconds
+    // Gradual backoff retry (30s to prevent spamming logs or draining battery)
+    final retrySeconds = _consecutiveFailures > 2 ? 30 : 10;
     _reconnectTimer?.cancel();
-    _reconnectTimer = Timer(const Duration(seconds: 5), () {
+    _reconnectTimer = Timer(Duration(seconds: retrySeconds), () {
       connect();
     });
   }
