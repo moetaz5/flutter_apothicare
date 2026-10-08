@@ -27,6 +27,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'core/providers/admin_provider.dart';
 import 'features/admin/presentation/home_admin_screen.dart';
+import 'core/services/notification_service.dart';
 import 'features/splash/presentation/splash_screen.dart';
 
 void main() async {
@@ -35,6 +36,11 @@ void main() async {
   // Initialize Storage Service (SharedPreferences)
   try {
     await StorageService.init().timeout(const Duration(seconds: 3));
+  } catch (_) {}
+
+  // Initialize Local Notifications (iOS & Android)
+  try {
+    await NotificationService.initialize(navKey: AppToast.navigatorKey);
   } catch (_) {}
 
   // Initialize Android WebView Platform

@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import '../network/api_client.dart';
+import '../services/notification_service.dart';
 import '../storage/storage_service.dart';
 
 class PatientProvider extends ChangeNotifier {
@@ -196,6 +197,18 @@ class PatientProvider extends ChangeNotifier {
       if (isSuccess) {
         // Refresh patient's medicaments immediately
         await fetchMedicamentsByPatient(targetId, forceRefresh: true);
+        
+        final medName = medicaments.isNotEmpty
+            ? (medicaments.first['designation']?.toString() ??
+                medicaments.first['nom']?.toString() ??
+                'Nouveau traitement')
+            : 'Nouveau traitement';
+        NotificationService.showDispensationNotification(
+          patientName: 'Observance Patient',
+          medicament: medName,
+          payload: 'dispensation',
+        );
+
         return true;
       }
       return false;

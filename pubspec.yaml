@@ -40,6 +40,7 @@ dependencies:
   url_launcher: ^6.2.4
 
   # Device Hardware & Utilities
+  flutter_local_notifications: ^17.2.2
   mobile_scanner: 7.0.0
   image_picker: ^1.0.7
   intl: ^0.20.3

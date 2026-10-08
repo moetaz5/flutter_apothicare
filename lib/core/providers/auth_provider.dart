@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import '../models/user_model.dart';
 import '../network/api_client.dart';
+import '../services/notification_service.dart';
 import '../storage/storage_service.dart';
 
 class AuthProvider extends ChangeNotifier {
@@ -12,6 +14,8 @@ class AuthProvider extends ChangeNotifier {
   bool _isLoading = false;
   String? _errorMessage;
   int _unreadNotifications = 0;
+  Timer? _notificationPollingTimer;
+  bool _hasInitialFetchDone = false;
 
   UserModel? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
@@ -25,7 +29,27 @@ class AuthProvider extends ChangeNotifier {
 
   void _loadStoredUser() {
     _currentUser = StorageService.getUser();
+    if (_currentUser != null) {
+      _startNotificationPolling();
+    }
     notifyListeners();
+  }
+
+  void _startNotificationPolling() {
+    _notificationPollingTimer?.cancel();
+    fetchUnreadNotifications();
+    NotificationService.requestPermissions();
+    _notificationPollingTimer = Timer.periodic(const Duration(seconds: 45), (_) {
+      if (isAuthenticated) {
+        fetchUnreadNotifications();
+      }
+    });
+  }
+
+  void _stopNotificationPolling() {
+    _notificationPollingTimer?.cancel();
+    _notificationPollingTimer = null;
+    _hasInitialFetchDone = false;
   }
 
   bool _isFetchingNotifications = false;
@@ -90,6 +114,7 @@ class AuthProvider extends ChangeNotifier {
 
         _currentUser = user;
         _isLoading = false;
+        _startNotificationPolling();
         notifyListeners();
 
         // Background update for fresh profile details & unread badge (non-blocking)
@@ -284,7 +309,19 @@ class AuthProvider extends ChangeNotifier {
         'id_user': _currentUser!.id,
       });
       if (response.data != null && response.data['nbRestant'] != null) {
-        _unreadNotifications = int.tryParse(response.data['nbRestant'].toString()) ?? 0;
+        final newCount = int.tryParse(response.data['nbRestant'].toString()) ?? 0;
+        if (_hasInitialFetchDone && newCount > _unreadNotifications) {
+          final diff = newCount - _unreadNotifications;
+          NotificationService.showActualiteNotification(
+            titre: diff == 1
+                ? 'Une nouvelle actualité est disponible sur Apothicare !'
+                : '$diff nouvelles actualités sont disponibles sur Apothicare !',
+            resume: 'Consultez les dernières informations et mises à jour.',
+            payload: 'actualite',
+          );
+        }
+        _unreadNotifications = newCount;
+        _hasInitialFetchDone = true;
         notifyListeners();
       }
     } catch (e) {
@@ -704,6 +741,7 @@ class AuthProvider extends ChangeNotifier {
 
   // Logout
   Future<void> logout() async {
+    _stopNotificationPolling();
     try {
       await _api.post('user/logout');
     } catch (e) {
