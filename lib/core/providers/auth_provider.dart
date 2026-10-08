@@ -49,7 +49,8 @@ class AuthProvider extends ChangeNotifier {
     WebSocketService().connect();
     WebSocketService().addListener(_onWebSocketMessage);
 
-    _notificationPollingTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+    // Fast polling fallback every 3 seconds for instant notifications
+    _notificationPollingTimer = Timer.periodic(const Duration(seconds: 3), (_) {
       if (isAuthenticated) {
         fetchUnreadNotifications();
       }
@@ -327,42 +328,50 @@ class AuthProvider extends ChangeNotifier {
     _isFetchingNotifications = true;
     try {
       // 1. Check Actualités notifications
-      final response = await _api.post('settings/getNotifActualites', data: {
-        'id_user': _currentUser!.id,
-      });
-      if (response.data != null && response.data['nbRestant'] != null) {
-        final newCount = int.tryParse(response.data['nbRestant'].toString()) ?? 0;
-        if (!_hasInitialFetchDone) {
-          if (newCount > 0) {
+      try {
+        final response = await _api.post(
+          'settings/getNotifActualites',
+          data: {'id_user': _currentUser!.id},
+          timeout: const Duration(seconds: 3),
+        );
+        if (response.data != null && response.data['nbRestant'] != null) {
+          final newCount = int.tryParse(response.data['nbRestant'].toString()) ?? 0;
+          if (!_hasInitialFetchDone) {
+            if (newCount > 0) {
+              NotificationService.showActualiteNotification(
+                titre: newCount == 1
+                    ? 'Vous avez 1 actualité non lue sur Apothicare !'
+                    : 'Vous avez $newCount actualités non lues sur Apothicare !',
+                resume: 'Consultez les dernières actualités.',
+                payload: 'actualite',
+              );
+            }
+          } else if (newCount > _unreadNotifications) {
+            final diff = newCount - _unreadNotifications;
             NotificationService.showActualiteNotification(
-              titre: newCount == 1
-                  ? 'Vous avez 1 actualité non lue sur Apothicare !'
-                  : 'Vous avez $newCount actualités non lues sur Apothicare !',
-              resume: 'Consultez les dernières actualités.',
+              titre: diff == 1
+                  ? 'Une nouvelle actualité est disponible sur Apothicare !'
+                  : '$diff nouvelles actualités sont disponibles sur Apothicare !',
+              resume: 'Consultez les dernières informations et mises à jour.',
               payload: 'actualite',
             );
           }
-        } else if (newCount > _unreadNotifications) {
-          final diff = newCount - _unreadNotifications;
-          NotificationService.showActualiteNotification(
-            titre: diff == 1
-                ? 'Une nouvelle actualité est disponible sur Apothicare !'
-                : '$diff nouvelles actualités sont disponibles sur Apothicare !',
-            resume: 'Consultez les dernières informations et mises à jour.',
-            payload: 'actualite',
-          );
+          _unreadNotifications = newCount;
+          _hasInitialFetchDone = true;
+          notifyListeners();
         }
-        _unreadNotifications = newCount;
-        _hasInitialFetchDone = true;
-        notifyListeners();
-      }
+      } catch (_) {}
 
       // 2. Check Unread Messages for phone notification bar
       try {
-        final msgRes = await _api.post('message/getUnreadCounts', data: {
-          'id_receiver': _currentUser!.id,
-          'type': 2,
-        });
+        final msgRes = await _api.post(
+          'message/getUnreadCounts',
+          data: {
+            'id_receiver': _currentUser!.id,
+            'type': 2,
+          },
+          timeout: const Duration(seconds: 3),
+        );
         if (msgRes.data != null) {
           int totalUnreadMsg = 0;
           if (msgRes.data is Map) {

@@ -40,9 +40,9 @@ class NotificationService {
       if (androidImplementation != null) {
         await androidImplementation.createNotificationChannel(
           const AndroidNotificationChannel(
-            'apothicare_general_channel_v3',
-            'Notifications Apothicare',
-            description: 'Canal principal des notifications Apothicare',
+            'apothicare_chat_channel_v4',
+            'Messages & Alertes Apothicare',
+            description: 'Canal instantané des messages et alertes Apothicare',
             importance: Importance.max,
             playSound: true,
             enableVibration: true,
@@ -82,15 +82,16 @@ class NotificationService {
     String? payload,
   }) async {
     final AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-      'apothicare_general_channel_v3',
-      'Notifications Apothicare',
-      channelDescription: 'Canal principal des notifications Apothicare',
+      'apothicare_chat_channel_v4',
+      'Messages & Alertes Apothicare',
+      channelDescription: 'Canal instantané des messages et alertes Apothicare',
       importance: Importance.max,
-      priority: Priority.high,
+      priority: Priority.max,
       playSound: true,
       enableVibration: true,
       icon: '@mipmap/ic_launcher',
       color: const Color(0xFF71A246),
+      category: AndroidNotificationCategory.message,
       styleInformation: BigTextStyleInformation(
         body,
         contentTitle: title,
@@ -134,8 +135,9 @@ class NotificationService {
     required String message,
     String? payload,
   }) async {
+    final notifId = DateTime.now().millisecondsSinceEpoch % 1000000;
     await showNotification(
-      id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      id: notifId,
       title: '💬 Nouveau message de $senderName',
       body: message,
       payload: payload ?? 'message',
