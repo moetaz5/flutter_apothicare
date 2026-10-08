@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
+import '../../../core/services/app_update_service.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/routes/app_routes.dart';
@@ -35,6 +36,7 @@ class _HomePharmacienScreenState extends State<HomePharmacienScreen> {
       final auth = context.read<AuthProvider>();
       auth.fetchUnreadNotifications();
       auth.fetchCurrentUserProfile();
+      AppUpdateService.checkForUpdate(context);
     });
   }
 
