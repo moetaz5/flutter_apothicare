@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/providers/auth_provider.dart';
@@ -187,134 +186,48 @@ class _AjouterDispensationScreenState extends State<AjouterDispensationScreen> {
     }
   }
 
-  void _openBarcodeScanner(List<dynamic> allMeds) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        return Container(
-          height: MediaQuery.of(context).size.height * 0.80,
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(28),
-              topRight: Radius.circular(28),
-            ),
-          ),
-          child: Column(
-            children: [
-              // Handle
-              Container(
-                margin: const EdgeInsets.only(top: 12, bottom: 12),
-                width: 44,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              const Text(
-                'Scanner un produit',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: _navy,
-                ),
-              ),
-              const SizedBox(height: 14),
-
-              // Scanner Viewfinder
-              Expanded(
-                child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 20),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0D1F3C),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      MobileScanner(
-                        onDetect: (capture) {
-                          final barcodes = capture.barcodes;
-                          if (barcodes.isNotEmpty && barcodes.first.rawValue != null) {
-                            final rawCode = barcodes.first.rawValue!.trim();
-                            
-                            // Find matching medicine in allMeds
-                            dynamic matched;
-                            for (var m in allMeds) {
-                              final barcodeStr = (m['code_barre'] ?? m['code'] ?? '').toString().trim();
-                              if (barcodeStr.isNotEmpty && barcodeStr == rawCode) {
-                                matched = m;
-                                break;
-                              }
-                            }
-
-                            Navigator.pop(ctx);
-
-                            if (matched != null) {
-                              setState(() {
-                                _selectedMedicament = matched;
-                              });
-                              AppToast.showSuccess('Produit détecté : ${matched['produit']}', context);
-                            } else {
-                              AppToast.showInfo('Code $rawCode scanné mais introuvable dans la liste.', context);
-                            }
-                          }
-                        },
-                      ),
-
-                      // Overlay framing square
-                      Container(
-                        width: 220,
-                        height: 220,
-                        decoration: BoxDecoration(
-                          border: Border.all(color: _green, width: 3),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                      ),
-                      const Positioned(
-                        bottom: 24,
-                        child: Text(
-                          'Placez le code-barres au centre',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Cancel button
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFF3F4F6),
-                      foregroundColor: const Color(0xFF374151),
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    ),
-                    child: const Text('Annuler', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
+  void _openBarcodeScanner(List<dynamic> allMeds) async {
+    final result = await Navigator.pushNamed(
+      context,
+      AppRoutes.qrScanner,
+      arguments: {'isSelectionMode': true},
     );
+
+    if (result is Map && mounted) {
+      _applyScannedProduct(result, allMeds);
+    }
+  }
+
+  void _applyScannedProduct(Map result, List<dynamic> allMeds) {
+    final medName = (result['medicament_name'] ?? result['produit'] ?? result['nom'] ?? '').toString().toLowerCase().trim();
+    final codeBarre = (result['code_barre'] ?? '').toString().trim();
+
+    dynamic matched;
+    for (var m in allMeds) {
+      final pName = (m['produit'] ?? m['nom'] ?? '').toString().toLowerCase().trim();
+      final cBarre = (m['code_barre'] ?? m['code'] ?? '').toString().trim();
+      if ((codeBarre.isNotEmpty && cBarre == codeBarre) ||
+          (medName.isNotEmpty && (pName == medName || pName.contains(medName) || medName.contains(pName)))) {
+        matched = m;
+        break;
+      }
+    }
+
+    if (matched != null) {
+      setState(() {
+        _selectedMedicament = matched;
+      });
+      AppToast.showSuccess('Produit sélectionné : ${matched['produit'] ?? matched['nom']}', context);
+    } else if (medName.isNotEmpty || codeBarre.isNotEmpty) {
+      setState(() {
+        _selectedMedicament = {
+          'id': result['product']?['id'] ?? 0,
+          'produit': result['medicament_name'] ?? medName,
+          'code_barre': codeBarre,
+        };
+      });
+      AppToast.showSuccess('Produit appliqué : ${result['medicament_name'] ?? medName}', context);
+    }
   }
 
   void _showMedicamentPicker(List<dynamic> allMeds, {bool byBarcode = false}) {

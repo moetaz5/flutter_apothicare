@@ -328,21 +328,29 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
                 ),
                 const SizedBox(height: 10),
 
-                // Action Button: Ajouter une dispensation (Green Gradient)
+                // Action Button: Ajouter / Sélectionner une dispensation
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: () {
+                      final args = ModalRoute.of(context)?.settings.arguments;
+                      final isSelection = args is Map && args['isSelectionMode'] == true;
+                      final productPayload = {
+                        'medicament_name': productName,
+                        'code_barre': product['code_barre'],
+                        'product': product,
+                      };
+
                       Navigator.pop(ctx);
-                      Navigator.pushNamed(
-                        context,
-                        AppRoutes.ajouterDispensation,
-                        arguments: {
-                          'medicament_name': productName,
-                          'code_barre': product['code_barre'],
-                          'product': product,
-                        },
-                      );
+                      if (isSelection) {
+                        Navigator.pop(context, productPayload);
+                      } else {
+                        Navigator.pushNamed(
+                          context,
+                          AppRoutes.ajouterDispensation,
+                          arguments: productPayload,
+                        );
+                      }
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: _green,
@@ -352,9 +360,12 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
                       elevation: 3,
                       shadowColor: const Color(0xFF244082).withValues(alpha: 0.28),
                     ),
-                    child: const Text(
-                      'Ajouter une dispensation',
-                      style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800),
+                    child: Text(
+                      (ModalRoute.of(context)?.settings.arguments is Map &&
+                              (ModalRoute.of(context)?.settings.arguments as Map)['isSelectionMode'] == true)
+                          ? 'Sélectionner ce médicament'
+                          : 'Ajouter une dispensation',
+                      style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800),
                     ),
                   ),
                 ),
