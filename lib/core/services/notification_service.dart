@@ -7,7 +7,7 @@ import '../network/api_client.dart';
 
 /// Top-level background message handler for Firebase Cloud Messaging (FCM)
 /// This function MUST be a top-level function annotated with @pragma('vm:entry-point')
-/// It is called by Android OS even when the app is completely terminated/closed!
+/// It is called by OS even when the app is completely terminated/closed!
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   try {
@@ -16,15 +16,27 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
   debugPrint('[FCM Background] Message received while app closed/background: ${message.messageId}');
 
-  // If the message contains pure data payload without a system notification block,
-  // we trigger a local notification to display in the notification bar
-  if (message.notification == null && message.data.isNotEmpty) {
-    final title = message.data['title'] ?? message.data['senderName'] ?? 'Apothicare';
-    final body = message.data['body'] ?? message.data['message'] ?? message.data['content'] ?? '';
-    final type = message.data['type'] ?? 'message';
+  try {
+    final FlutterLocalNotificationsPlugin localNotif = FlutterLocalNotificationsPlugin();
+    const AndroidInitializationSettings androidSettings = AndroidInitializationSettings('@mipmap/launcher_icon');
+    const DarwinInitializationSettings iosSettings = DarwinInitializationSettings(
+      requestAlertPermission: true,
+      requestBadgePermission: true,
+      requestSoundPermission: true,
+    );
+    const InitializationSettings initSettings = InitializationSettings(
+      android: androidSettings,
+      iOS: iosSettings,
+    );
+    await localNotif.initialize(initSettings);
+
+    final notification = message.notification;
+    final data = message.data;
+    final title = notification?.title ?? data['title'] ?? data['senderName'] ?? 'Apothicare';
+    final body = notification?.body ?? data['body'] ?? data['message'] ?? data['content'] ?? '';
+    final type = data['type'] ?? 'message';
 
     if (body.toString().isNotEmpty || title.toString().isNotEmpty) {
-      final FlutterLocalNotificationsPlugin localNotif = FlutterLocalNotificationsPlugin();
       const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
         'apothicare_chat_channel_v4',
         'Messages & Alertes Apothicare',
@@ -35,14 +47,21 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
         enableVibration: true,
         icon: '@mipmap/launcher_icon',
       );
+      const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      );
       await localNotif.show(
         DateTime.now().millisecondsSinceEpoch % 1000000,
         title.toString(),
         body.toString(),
-        const NotificationDetails(android: androidDetails),
+        const NotificationDetails(android: androidDetails, iOS: iosDetails),
         payload: type.toString(),
       );
     }
+  } catch (e) {
+    debugPrint('[FCM Background Error] $e');
   }
 }
 
