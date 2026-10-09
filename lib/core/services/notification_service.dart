@@ -189,9 +189,20 @@ class NotificationService {
     return true;
   }
 
-  /// Get current FCM Device Token
+  /// Get current FCM Device Token with iOS APNs token resilience
   static Future<String?> getFcmToken() async {
     try {
+      if (Platform.isIOS) {
+        String? apnsToken = await FirebaseMessaging.instance.getAPNSToken();
+        if (apnsToken == null) {
+          // Wait up to 3 seconds for iOS APNs token registration
+          for (int i = 0; i < 3; i++) {
+            await Future.delayed(const Duration(seconds: 1));
+            apnsToken = await FirebaseMessaging.instance.getAPNSToken();
+            if (apnsToken != null) break;
+          }
+        }
+      }
       final token = await FirebaseMessaging.instance.getToken();
       debugPrint('[FCM Token] $token');
       return token;
@@ -311,6 +322,20 @@ class NotificationService {
       title: '💊 Nouvelle dispensation enregistrée',
       body: '$patientName : $medicament',
       payload: payload ?? 'dispensation',
+    );
+  }
+
+  /// Helper for medication reminder notification
+  static Future<void> showRappelMedicamentNotification({
+    required String medicament,
+    required String posologie,
+    String? payload,
+  }) async {
+    await showNotification(
+      id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      title: '⏰ Rappel Prise de Médicament',
+      body: 'Il est l\'heure de prendre : $medicament ($posologie)',
+      payload: payload ?? 'rappel_medicament',
     );
   }
 
