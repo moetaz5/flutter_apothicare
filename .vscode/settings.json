@@ -1,3 +1,13 @@
 {
-    "java.configuration.updateBuildConfiguration": "interactive"
+    "java.configuration.updateBuildConfiguration": "interactive",
+    "C_Cpp.errorSquiggles": "disabled",
+    "C_Cpp.intelliSenseEngine": "disabled",
+    "files.associations": {
+        "*.m": "plaintext",
+        "*.h": "plaintext"
+    },
+    "files.watcherExclude": {
+        "**/ios/**": true,
+        "**/android/**": true
+    }
 }
