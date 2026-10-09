@@ -174,13 +174,20 @@ class NotificationService {
   static Future<bool> requestPermissions() async {
     try {
       if (Platform.isIOS) {
+        final settings = await FirebaseMessaging.instance.requestPermission(
+          alert: true,
+          badge: true,
+          sound: true,
+          provisional: false,
+        );
         final iosImplementation = _notificationsPlugin.resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>();
-        return await iosImplementation?.requestPermissions(
-              alert: true,
-              badge: true,
-              sound: true,
-            ) ??
-            false;
+        await iosImplementation?.requestPermissions(
+          alert: true,
+          badge: true,
+          sound: true,
+        );
+        return settings.authorizationStatus == AuthorizationStatus.authorized ||
+            settings.authorizationStatus == AuthorizationStatus.provisional;
       } else if (Platform.isAndroid) {
         final androidImplementation = _notificationsPlugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
         return await androidImplementation?.requestNotificationsPermission() ?? false;
