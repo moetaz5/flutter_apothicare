@@ -16,23 +16,15 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
   debugPrint('[FCM Background] Message received while app closed/background: ${message.messageId}');
 
-  try {
-    final FlutterLocalNotificationsPlugin localNotif = FlutterLocalNotificationsPlugin();
-    const AndroidInitializationSettings androidSettings = AndroidInitializationSettings('@mipmap/launcher_icon');
-    const DarwinInitializationSettings iosSettings = DarwinInitializationSettings();
-    const InitializationSettings initSettings = InitializationSettings(
-      android: androidSettings,
-      iOS: iosSettings,
-    );
-    await localNotif.initialize(initSettings);
-
-    final notification = message.notification;
-    final data = message.data;
-    final title = notification?.title ?? data['title'] ?? data['senderName'] ?? 'Apothicare';
-    final body = notification?.body ?? data['body'] ?? data['message'] ?? data['content'] ?? '';
-    final type = data['type'] ?? 'message';
+  // If the message contains pure data payload without a system notification block,
+  // we trigger a local notification to display in the notification bar
+  if (message.notification == null && message.data.isNotEmpty) {
+    final title = message.data['title'] ?? message.data['senderName'] ?? 'Apothicare';
+    final body = message.data['body'] ?? message.data['message'] ?? message.data['content'] ?? '';
+    final type = message.data['type'] ?? 'message';
 
     if (body.toString().isNotEmpty || title.toString().isNotEmpty) {
+      final FlutterLocalNotificationsPlugin localNotif = FlutterLocalNotificationsPlugin();
       const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
         'apothicare_chat_channel_v4',
         'Messages & Alertes Apothicare',
@@ -42,29 +34,15 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
         playSound: true,
         enableVibration: true,
         icon: '@mipmap/launcher_icon',
-        category: AndroidNotificationCategory.message,
-        visibility: NotificationVisibility.public,
       );
-
-      const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
-        presentAlert: true,
-        presentBadge: true,
-        presentSound: true,
-      );
-
       await localNotif.show(
         DateTime.now().millisecondsSinceEpoch % 1000000,
         title.toString(),
         body.toString(),
-        const NotificationDetails(
-          android: androidDetails,
-          iOS: iosDetails,
-        ),
+        const NotificationDetails(android: androidDetails),
         payload: type.toString(),
       );
     }
-  } catch (e) {
-    debugPrint('[FCM Background Error] $e');
   }
 }
 
@@ -244,7 +222,12 @@ class NotificationService {
   /// Sync FCM Device Token with Apothicare Backend (user/updateFcmToken)
   static Future<void> syncFcmToken(ApiClient api) async {
     try {
-      final token = await getFcmToken();
+      String? token = await getFcmToken();
+      if (token == null && Platform.isIOS) {
+        // Retry once after 3 seconds on iOS if APNs was initializing
+        await Future.delayed(const Duration(seconds: 3));
+        token = await getFcmToken();
+      }
       if (token != null && token.isNotEmpty) {
         await api.post('user/updateFcmToken', data: {
           'fcm_token': token,
