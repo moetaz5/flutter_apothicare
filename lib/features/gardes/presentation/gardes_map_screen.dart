@@ -75,14 +75,13 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
   @override
   void initState() {
     super.initState();
-    VoiceGuidanceService().init();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await CustomMapMarkerHelper.initMarkers();
       if (!mounted) return;
 
       final provider = context.read<GardeProvider>();
 
-      // 1. Get user GPS location & check permissions
+      // 1. Get user GPS location & check permissions instantaneously without blocking
       Position? userPos;
       bool hasPerm = false;
       try {
@@ -92,18 +91,26 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
         }
         hasPerm = permission == LocationPermission.always || permission == LocationPermission.whileInUse;
         if (hasPerm) {
-          try {
-            userPos = await Geolocator.getCurrentPosition(
-              desiredAccuracy: LocationAccuracy.high,
-              timeLimit: const Duration(seconds: 4),
-            );
-          } catch (_) {
-            userPos = await Geolocator.getLastKnownPosition();
-          }
-        } else {
           userPos = await Geolocator.getLastKnownPosition();
         }
       } catch (_) {}
+
+      // Asynchronously request fresh GPS fix without blocking initial render
+      if (hasPerm) {
+        Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high,
+          timeLimit: const Duration(seconds: 3),
+        ).then((freshPos) {
+          if (mounted) {
+            final newPos = LatLng(freshPos.latitude, freshPos.longitude);
+            _currentUserGpsLocation = newPos;
+            if (!_isNavigating) {
+              _buildMarkers(context.read<GardeProvider>().gardes);
+            }
+            if (mounted) setState(() {});
+          }
+        }).catchError((_) {});
+      }
 
       if (mounted) {
         setState(() {

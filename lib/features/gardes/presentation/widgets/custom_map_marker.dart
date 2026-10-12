@@ -11,6 +11,9 @@ class CustomMapMarkerHelper {
   static ui.Image? _caduceusAssetImage;
 
   static Future<void> initMarkers() async {
+    if (dayMarker != null && nightMarker != null && selectedMarker != null && userLocationMarker != null) {
+      return;
+    }
     try {
       // Load the official caduceus asset icon in high resolution for crisp rendering
       if (_caduceusAssetImage == null) {

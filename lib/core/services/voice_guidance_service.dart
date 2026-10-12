@@ -52,6 +52,9 @@ class VoiceGuidanceService {
 
   Future<void> speak(String text, {bool force = false}) async {
     if (!_isEnabled) return;
+    if (!_isInitialized) {
+      await init();
+    }
     if (text.trim().isEmpty) return;
 
     final cleanText = _cleanInstruction(text);

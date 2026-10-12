@@ -5,9 +5,11 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/providers/auth_provider.dart';
+import '../../../core/providers/garde_provider.dart';
 import '../../../core/routes/app_routes.dart';
 import '../../../core/services/app_update_service.dart';
 import '../../../core/utils/app_toast.dart';
+import '../../gardes/presentation/widgets/custom_map_marker.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -29,6 +31,11 @@ class _SignInScreenState extends State<SignInScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       AppUpdateService.checkForUpdate(context);
+      // Pre-warm map markers and pharmacies in background for zero-lag instant map opening
+      CustomMapMarkerHelper.initMarkers();
+      try {
+        context.read<GardeProvider>().fetchGardes();
+      } catch (_) {}
     });
   }
 
@@ -915,6 +922,8 @@ class _SignInScreenState extends State<SignInScreen> {
         onTap: () {
           Navigator.pushNamed(context, AppRoutes.gardesMap);
         },
+        splashColor: const Color(0xFF4ADE80).withValues(alpha: 0.25),
+        highlightColor: Colors.white.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(30),
         child: Container(
           padding: EdgeInsets.symmetric(
