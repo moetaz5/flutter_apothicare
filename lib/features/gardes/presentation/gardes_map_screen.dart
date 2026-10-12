@@ -16,6 +16,8 @@ import '../../../shared/widgets/app_bottom_nav_bar.dart';
 import '../../../shared/widgets/app_loading_indicator.dart';
 import 'widgets/custom_map_marker.dart';
 import 'widgets/route_service.dart';
+import 'fiche_pharmacie_screen.dart';
+import '../../../core/services/voice_guidance_service.dart';
 
 class GardesMapScreen extends StatefulWidget {
   const GardesMapScreen({super.key});
@@ -51,6 +53,7 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
   bool _isCalculatingRoute = false;
   bool _isLiveGuiding = false; // Live Turn-by-Turn GPS Guidance Mode
   bool _isMuted = false;
+  bool _hasAnnouncedArrival = false;
   String _travelMode = 'driving'; // 'driving' or 'walking'
   RouteInfo? _currentRouteInfo;
   GardeModel? _navDestinationPharmacy;
@@ -72,6 +75,7 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
   @override
   void initState() {
     super.initState();
+    VoiceGuidanceService().init();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await CustomMapMarkerHelper.initMarkers();
       if (!mounted) return;
@@ -171,6 +175,7 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
 
   @override
   void dispose() {
+    VoiceGuidanceService().stop();
     _debounceTimer?.cancel();
     _guidanceProgressTimer?.cancel();
     _searchController.dispose();
@@ -616,7 +621,19 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
       _remainingDurationMin = initialDurationMin;
       _etaTimeStr = '${eta.hour.toString().padLeft(2, '0')}:${eta.minute.toString().padLeft(2, '0')}';
       _currentSpeedKmH = 0.0;
+      _hasAnnouncedArrival = false;
     });
+
+    VoiceGuidanceService().setMuted(_isMuted);
+    if (!_isMuted) {
+      if (_currentRouteInfo != null && _currentRouteInfo!.stepDetails.isNotEmpty) {
+        final firstStep = _currentRouteInfo!.stepDetails.first;
+        VoiceGuidanceService().speak(firstStep.instruction, force: true);
+      } else {
+        final destName = _navDestinationPharmacy?.nomPharmacie ?? 'votre destination';
+        VoiceGuidanceService().speak('Départ vers $destName', force: true);
+      }
+    }
 
     _buildMarkers(provider.gardes);
 
@@ -730,8 +747,16 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
     // Calculate remaining duration down to 0 min at destination
     if (totalRemainingMeters <= 25) {
       _remainingDurationMin = 0;
-      if (_isLiveGuiding) {
+      if (_isLiveGuiding && !_hasAnnouncedArrival) {
+        _hasAnnouncedArrival = true;
         AppToast.showSuccess('🎉 Vous êtes arrivé à la pharmacie !', context);
+        final pharmacyName = _navDestinationPharmacy?.nomPharmacie ?? '';
+        VoiceGuidanceService().speak(
+          pharmacyName.isNotEmpty
+              ? 'Vous êtes arrivé à la pharmacie $pharmacyName.'
+              : 'Vous êtes arrivé à destination.',
+          force: true,
+        );
       }
     } else {
       _remainingDurationMin = (_travelMode == 'driving'
@@ -773,7 +798,14 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
       final step = _currentRouteInfo!.stepDetails[i];
       final d = _calculateDistanceKm(userPos.latitude, userPos.longitude, step.location.latitude, step.location.longitude) * 1000.0;
       if (d < 40 && i + 1 < _currentRouteInfo!.stepDetails.length) {
-        _currentStepIndex = i + 1;
+        final newIndex = i + 1;
+        if (newIndex != _currentStepIndex) {
+          _currentStepIndex = newIndex;
+          if (_isLiveGuiding && !_isMuted) {
+            final nextStep = _currentRouteInfo!.stepDetails[_currentStepIndex];
+            VoiceGuidanceService().speak(nextStep.instruction);
+          }
+        }
         break;
       }
     }
@@ -801,6 +833,7 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
   }
 
   void _stopLiveGuiding() async {
+    VoiceGuidanceService().stop();
     _positionStreamSub?.cancel();
     _positionStreamSub = null;
     _guidanceProgressTimer?.cancel();
@@ -817,6 +850,7 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
   }
 
   void _exitInAppRoute() {
+    VoiceGuidanceService().stop();
     _positionStreamSub?.cancel();
     _positionStreamSub = null;
     _guidanceProgressTimer?.cancel();
@@ -933,6 +967,8 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
   Widget build(BuildContext context) {
     final provider = context.watch<GardeProvider>();
     final topPadding = MediaQuery.of(context).padding.top;
+    final isAuth = context.watch<AuthProvider>().isAuthenticated;
+    final bottomInset = isAuth ? 0.0 : MediaQuery.of(context).padding.bottom;
 
     final initialTarget = (provider.gardes.isNotEmpty && provider.gardes.first.lat != null && provider.gardes.first.lat != 0)
         ? LatLng(provider.gardes.first.lat!, provider.gardes.first.lng!)
@@ -999,7 +1035,7 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
                           ),
                         )
                       : ListView.separated(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          padding: EdgeInsets.fromLTRB(16, 14, 16, 14 + bottomInset),
                           itemCount: provider.gardes.length,
                           separatorBuilder: (ctx, i) => const SizedBox(height: 12),
                           itemBuilder: (ctx, i) {
@@ -1098,7 +1134,20 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
                   _buildLiveActionCircle(
                     icon: _isMuted ? LucideIcons.volumeX : LucideIcons.volume2,
                     iconColor: _isMuted ? Colors.redAccent : AppColors.forestGreen,
-                    onTap: () => setState(() => _isMuted = !_isMuted),
+                    onTap: () {
+                      setState(() => _isMuted = !_isMuted);
+                      VoiceGuidanceService().setMuted(_isMuted);
+                      if (!_isMuted && _isLiveGuiding) {
+                        if (_currentRouteInfo != null &&
+                            _currentRouteInfo!.stepDetails.isNotEmpty &&
+                            _currentStepIndex < _currentRouteInfo!.stepDetails.length) {
+                          VoiceGuidanceService().speak(
+                            _currentRouteInfo!.stepDetails[_currentStepIndex].instruction,
+                            force: true,
+                          );
+                        }
+                      }
+                    },
                   ),
                 ],
               ),
@@ -1144,7 +1193,7 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
           // ─── USER LOCATION & OVERVIEW BUTTONS (Bottom Left) ───
           if (!_isListView && !_isLiveGuiding)
             Positioned(
-              bottom: (_isNavigating || _selectedPharmacy != null) ? 220 : 16,
+              bottom: (_isNavigating || _selectedPharmacy != null) ? (295 + bottomInset) : (16 + bottomInset),
               left: 14,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -1179,7 +1228,7 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
           // ─── LIVE GUIDANCE BOTTOM BAR (Floating Card above Bottom Nav) ───
           if (_isLiveGuiding && _navDestinationPharmacy != null)
             Positioned(
-              bottom: 12,
+              bottom: 12 + bottomInset,
               left: 14,
               right: 14,
               child: RepaintBoundary(
@@ -1190,7 +1239,7 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
           // ─── IN-APP NAVIGATION PREVIEW PANEL (Before "Démarrer") ───
           if (!_isListView && !_isLiveGuiding && _isNavigating && _navDestinationPharmacy != null)
             Positioned(
-              bottom: 14,
+              bottom: 14 + bottomInset,
               left: 14,
               right: 14,
               child: RepaintBoundary(
@@ -1201,7 +1250,7 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
           // ─── SELECTED PHARMACY BOTTOM PREVIEW CARD ───
           if (!_isListView && !_isNavigating && !_isLiveGuiding && _selectedPharmacy != null)
             Positioned(
-              bottom: 14,
+              bottom: 14 + bottomInset,
               left: 14,
               right: 14,
               child: RepaintBoundary(
@@ -2230,19 +2279,40 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
           ),
           const SizedBox(height: 14),
 
-          // Action Buttons
+          // Bouton Consulter la fiche (Identique React)
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => _navigateToFiche(ph),
+              icon: const Icon(LucideIcons.fileText, size: 16),
+              label: const Text(
+                'Consulter la fiche',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryGreen,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          // Action Buttons: Appeler & Itinéraire
           Row(
             children: [
               if (ph.tel != null && ph.tel!.isNotEmpty)
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed: () => _callPharmacy(ph.tel),
-                    icon: const Icon(LucideIcons.phoneCall, size: 15),
-                    label: const Text('Appeler', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5)),
+                    icon: const Icon(LucideIcons.phoneCall, size: 14),
+                    label: const Text('Appeler', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.forestGreen,
                       side: const BorderSide(color: AppColors.forestGreen, width: 1.5),
-                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      padding: const EdgeInsets.symmetric(vertical: 9),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                   ),
@@ -2250,15 +2320,14 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
               if (ph.tel != null && ph.tel!.isNotEmpty) const SizedBox(width: 8),
               Expanded(
                 flex: 2,
-                child: ElevatedButton.icon(
+                child: OutlinedButton.icon(
                   onPressed: () => _startInAppRoute(ph),
-                  icon: const Icon(LucideIcons.navigation, size: 15),
-                  label: const Text('Itinéraire', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryGreen,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    padding: const EdgeInsets.symmetric(vertical: 10),
+                  icon: const Icon(LucideIcons.navigation, size: 14),
+                  label: const Text('Itinéraire', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.primaryGreen,
+                    side: const BorderSide(color: AppColors.primaryGreen, width: 1.5),
+                    padding: const EdgeInsets.symmetric(vertical: 9),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                 ),
@@ -2266,6 +2335,15 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  void _navigateToFiche(GardeModel ph) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => FichePharmacieScreen(garde: ph),
       ),
     );
   }
@@ -2342,31 +2420,43 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
           const SizedBox(height: 14),
           Row(
             children: [
-              if (ph.tel != null && ph.tel!.isNotEmpty)
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => _callPharmacy(ph.tel),
-                    icon: const Icon(LucideIcons.phone, size: 14),
-                    label: Text(ph.tel!, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.forestGreen,
-                      side: const BorderSide(color: AppColors.forestGreen),
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                  ),
-                ),
-              if (ph.tel != null && ph.tel!.isNotEmpty) const SizedBox(width: 8),
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: () => _startInAppRoute(ph),
-                  icon: const Icon(LucideIcons.navigation, size: 14),
-                  label: const Text('Itinéraire', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
+                  onPressed: () => _navigateToFiche(ph),
+                  icon: const Icon(LucideIcons.fileText, size: 14),
+                  label: const Text('Fiche', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryGreen,
                     foregroundColor: Colors.white,
                     elevation: 0,
-                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    padding: const EdgeInsets.symmetric(vertical: 9),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              if (ph.tel != null && ph.tel!.isNotEmpty) ...[
+                OutlinedButton(
+                  onPressed: () => _callPharmacy(ph.tel),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.forestGreen,
+                    side: const BorderSide(color: AppColors.forestGreen),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Icon(LucideIcons.phone, size: 14),
+                ),
+                const SizedBox(width: 8),
+              ],
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _startInAppRoute(ph),
+                  icon: const Icon(LucideIcons.navigation, size: 14),
+                  label: const Text('Itinéraire', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.forestGreen,
+                    side: const BorderSide(color: AppColors.forestGreen),
+                    padding: const EdgeInsets.symmetric(vertical: 9),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                 ),

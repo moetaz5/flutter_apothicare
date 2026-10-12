@@ -304,13 +304,19 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await _api.post('user/sendMail', data: {
+      final response = await _api.post('sendMail/sendEmail', data: {
         'email': email,
         'url': 'https://www.apothicare.tn/',
       });
       _isLoading = false;
       notifyListeners();
-      return response.statusCode == 200;
+
+      if (response.statusCode == 200 && (response.data == true || response.data.toString().contains('true'))) {
+        return true;
+      } else {
+        _errorMessage = 'Vérifiez votre adresse e-mail.';
+        return false;
+      }
     } catch (e) {
       _errorMessage = 'Impossible d\'envoyer le lien de réinitialisation.';
       _isLoading = false;
@@ -783,14 +789,29 @@ class AuthProvider extends ChangeNotifier {
   // Logout
   Future<void> logout() async {
     _stopNotificationPolling();
+
+    // 1. Detach push notification token and cancel notifications for this user
+    try {
+      await NotificationService.onLogout(_api);
+    } catch (_) {}
+
+    // 2. Disconnect WebSocket cleanly
+    try {
+      WebSocketService().disconnect();
+    } catch (_) {}
+
+    // 3. Notify backend logout endpoint
     try {
       await _api.post('user/logout');
     } catch (e) {
       // Continue clearing local state anyway
     }
+
+    // 4. Clear all local storage
     await StorageService.clearAll();
     _currentUser = null;
     _unreadNotifications = 0;
+    _unreadMessages = 0;
     notifyListeners();
   }
 }

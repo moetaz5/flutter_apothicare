@@ -36,6 +36,8 @@ import '../../features/profile/presentation/edit_profile_screen.dart';
 import '../../features/profile/presentation/pharmacien_profile_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/gardes/presentation/screen_calendrier_de_garde_pharmacien.dart';
+import '../../features/gardes/presentation/fiche_pharmacie_screen.dart';
+import '../../core/models/garde_model.dart';
 import '../../features/splash/presentation/splash_screen.dart';
 
 class AppRoutes {
@@ -85,6 +87,8 @@ class AppRoutes {
   static const String detailsTraitement = '/traitement-details';
   static const String quizTraitement = '/traitement-quiz';
   static const String medicaments = '/medicaments';
+  static const String fichePharmacie = '/fiche-pharmacie';
+  static const String pharmacieDetails = '/geopharmacie/pharmacie/details';
 
   static Map<String, WidgetBuilder> get routes => {
         splash: (context) => const SplashScreen(),
@@ -144,6 +148,24 @@ class AppRoutes {
           return const QuizScreen();
         },
         medicaments: (context) => const RechercheMedicamentsScreen(),
+        fichePharmacie: (context) {
+          final args = ModalRoute.of(context)?.settings.arguments;
+          if (args is GardeModel) {
+            return FichePharmacieScreen(garde: args);
+          } else if (args is int) {
+            return FichePharmacieScreen(pharmacyId: args);
+          }
+          return const FichePharmacieScreen();
+        },
+        pharmacieDetails: (context) {
+          final args = ModalRoute.of(context)?.settings.arguments;
+          if (args is GardeModel) {
+            return FichePharmacieScreen(garde: args);
+          } else if (args is int) {
+            return FichePharmacieScreen(pharmacyId: args);
+          }
+          return const FichePharmacieScreen();
+        },
       };
 }
 

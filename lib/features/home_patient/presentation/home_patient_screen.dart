@@ -711,7 +711,7 @@ class _HomePatientScreenState extends State<HomePatientScreen> {
                   ),
                   SizedBox(height: 2),
                   Text(
-                    'Scannez le QR Code de votre ordonnance ou boîte',
+                    'Scannez votre boîte',
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w500,

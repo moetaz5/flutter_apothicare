@@ -25,13 +25,23 @@ import 'package:webview_flutter_android/webview_flutter_android.dart';
 
 import 'package:flutter_localizations/flutter_localizations.dart';
 
+import 'dart:io';
 import 'core/providers/admin_provider.dart';
 import 'features/admin/presentation/home_admin_screen.dart';
 import 'core/network/api_client.dart';
 import 'core/services/notification_service.dart';
 import 'features/splash/presentation/splash_screen.dart';
 
+class AppHttpOverrides extends HttpOverrides {
+  @override
+  HttpClient createHttpClient(SecurityContext? context) {
+    return super.createHttpClient(context)
+      ..badCertificateCallback = (cert, host, port) => true;
+  }
+}
+
 void main() async {
+  HttpOverrides.global = AppHttpOverrides();
   WidgetsFlutterBinding.ensureInitialized();
 
   // Initialize Storage Service (SharedPreferences)

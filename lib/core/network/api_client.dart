@@ -85,7 +85,8 @@ class ApiClient {
 
           final isPublicAuth = options.path.contains('user/login') ||
               options.path.contains('user/addInscription') ||
-              options.path.contains('user/sendMail');
+              options.path.contains('user/sendMail') ||
+              options.path.contains('sendMail/');
 
           if (!isPublicAuth) {
             final token = StorageService.getToken();

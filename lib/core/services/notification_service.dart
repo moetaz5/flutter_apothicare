@@ -4,6 +4,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import '../network/api_client.dart';
+import '../storage/storage_service.dart';
 
 /// Top-level background message handler for Firebase Cloud Messaging (FCM)
 /// This function MUST be a top-level function annotated with @pragma('vm:entry-point')
@@ -13,6 +14,18 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   try {
     await Firebase.initializeApp();
   } catch (_) {}
+
+  // Check if a user is currently authenticated on this device
+  try {
+    await StorageService.init();
+    final token = StorageService.getToken();
+    if (token == null || token.isEmpty) {
+      debugPrint('[FCM Background] User is logged out. Discarding notification: ${message.messageId}');
+      return;
+    }
+  } catch (e) {
+    debugPrint('[FCM Background] Auth check error: $e');
+  }
 
   debugPrint('[FCM Background] Message received while app closed/background: ${message.messageId}');
 
@@ -142,6 +155,11 @@ class NotificationService {
 
       // Handle Foreground FCM Messages
       FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+        final token = StorageService.getToken();
+        if (token == null || token.isEmpty) {
+          debugPrint('[FCM Foreground] User is logged out. Ignoring notification.');
+          return;
+        }
         debugPrint('[FCM Foreground] Message received: ${message.messageId}');
         final notification = message.notification;
         final data = message.data;
@@ -161,6 +179,8 @@ class NotificationService {
 
       // Handle notification tap when app is in background (but not terminated)
       FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+        final token = StorageService.getToken();
+        if (token == null || token.isEmpty) return;
         debugPrint('[FCM onMessageOpenedApp] Notification tapped: ${message.data}');
         final payload = message.data['type'] ?? 'message';
         _handlePayloadNavigation(payload.toString());
@@ -168,6 +188,8 @@ class NotificationService {
 
       // Handle notification tap when app is opened from a terminated (completely closed) state
       FirebaseMessaging.instance.getInitialMessage().then((RemoteMessage? message) {
+        final token = StorageService.getToken();
+        if (token == null || token.isEmpty) return;
         if (message != null) {
           debugPrint('[FCM getInitialMessage] Launched from closed state: ${message.data}');
           final payload = message.data['type'] ?? 'message';
@@ -180,7 +202,10 @@ class NotificationService {
       // Listen for token refresh
       FirebaseMessaging.instance.onTokenRefresh.listen((newToken) {
         debugPrint('[FCM] Token refreshed: $newToken');
-        syncFcmToken(ApiClient());
+        final token = StorageService.getToken();
+        if (token != null && token.isNotEmpty) {
+          syncFcmToken(ApiClient());
+        }
       });
     } catch (e) {
       debugPrint('[NotificationService] Firebase init warning: $e');
@@ -255,6 +280,33 @@ class NotificationService {
       }
     } catch (e) {
       debugPrint('[FCM Sync Error] Failed to update token on server: $e');
+    }
+  }
+
+  /// Cleanup when user logs out: clear server token, cancel local notifications, and delete FCM token
+  static Future<void> onLogout(ApiClient api) async {
+    try {
+      // 1. Tell backend to detach FCM token for this user
+      await api.post('user/updateFcmToken', data: {
+        'fcm_token': '',
+      });
+      debugPrint('[FCM Logout] Successfully cleared token on backend');
+    } catch (e) {
+      debugPrint('[FCM Logout Error] Backend update failed: $e');
+    }
+
+    try {
+      // 2. Cancel all pending local notifications on the device
+      await _notificationsPlugin.cancelAll();
+      debugPrint('[FCM Logout] Cancelled all pending notifications');
+    } catch (_) {}
+
+    try {
+      // 3. Delete FCM token so Google/Apple push servers permanently stop routing notifications to this device token
+      await FirebaseMessaging.instance.deleteToken();
+      debugPrint('[FCM Logout] Successfully deleted FCM registration token');
+    } catch (e) {
+      debugPrint('[FCM Logout Error] Delete token failed: $e');
     }
   }
 
