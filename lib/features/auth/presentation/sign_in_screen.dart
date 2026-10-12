@@ -109,7 +109,7 @@ class _SignInScreenState extends State<SignInScreen> {
     final screenHeight = mediaQuery.size.height;
     final bottomPadding = mediaQuery.padding.bottom;
 
-    final isSmallScreen = screenHeight < 760;
+    final isSmallScreen = screenHeight < 860;
 
     return Scaffold(
       backgroundColor: const Color(0xFF0F2916), // Deep Forest Brand Background
@@ -207,35 +207,35 @@ class _SignInScreenState extends State<SignInScreen> {
                           // ─── TOP HERO IDENTITY SECTION ───
                           Padding(
                             padding: EdgeInsets.only(
-                              top: isSmallScreen ? 12 : 20,
-                              bottom: isSmallScreen ? 16 : 24,
-                              left: 20,
-                              right: 20,
+                              top: isSmallScreen ? 8 : 14,
+                              bottom: isSmallScreen ? 8 : 14,
+                              left: 16,
+                              right: 16,
                             ),
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 // Sleek Floating Brand Emblem with entrance bounce & subtle float
                                 Container(
-                                  width: isSmallScreen ? 60 : 70,
-                                  height: isSmallScreen ? 60 : 70,
+                                  width: isSmallScreen ? 50 : 60,
+                                  height: isSmallScreen ? 50 : 60,
                                   decoration: BoxDecoration(
                                     color: Colors.white,
-                                    borderRadius: BorderRadius.circular(22),
+                                    borderRadius: BorderRadius.circular(18),
                                     border: Border.all(
                                       color: Colors.white.withValues(alpha: 0.85),
-                                      width: 2,
+                                      width: 1.5,
                                     ),
                                     boxShadow: [
                                       BoxShadow(
                                         color: AppColors.primaryGreen.withValues(alpha: 0.40),
-                                        blurRadius: 24,
-                                        spreadRadius: 2,
-                                        offset: const Offset(0, 8),
+                                        blurRadius: 20,
+                                        spreadRadius: 1,
+                                        offset: const Offset(0, 6),
                                       ),
                                     ],
                                   ),
-                                  padding: const EdgeInsets.all(12),
+                                  padding: const EdgeInsets.all(9),
                                   child: Image.asset(
                                     'assets/images/logo1.png',
                                     fit: BoxFit.contain,
@@ -247,7 +247,7 @@ class _SignInScreenState extends State<SignInScreen> {
                                     .animate(onPlay: (c) => c.repeat(reverse: true))
                                     .moveY(begin: 0, end: -4, duration: 2400.ms, curve: Curves.easeInOut),
 
-                                SizedBox(height: isSmallScreen ? 10 : 14),
+                                SizedBox(height: isSmallScreen ? 6 : 9),
 
                                 // Brand Title with glowing green accent dot
                                 Row(
@@ -256,10 +256,10 @@ class _SignInScreenState extends State<SignInScreen> {
                                     Text(
                                       'APOTHICARE',
                                       style: GoogleFonts.outfit(
-                                        fontSize: isSmallScreen ? 23 : 26,
+                                        fontSize: isSmallScreen ? 21 : 24,
                                         fontWeight: FontWeight.w900,
                                         color: Colors.white,
-                                        letterSpacing: 3.5,
+                                        letterSpacing: 3.0,
                                       ),
                                     ),
                                     const SizedBox(width: 5),
@@ -324,103 +324,10 @@ class _SignInScreenState extends State<SignInScreen> {
                                     .fadeIn(delay: 220.ms, duration: 400.ms)
                                     .scale(begin: const Offset(0.92, 0.92), end: const Offset(1, 1), delay: 220.ms, curve: Curves.easeOut),
 
-                                SizedBox(height: isSmallScreen ? 12 : 16),
+                                SizedBox(height: isSmallScreen ? 7 : 10),
 
-                                // Quick Action Pill: "Trouvez la pharmacie ouverte" with live radar pulse & periodic shimmer
-                                Material(
-                                  color: Colors.transparent,
-                                  child: InkWell(
-                                    onTap: () {
-                                      Navigator.pushNamed(context, AppRoutes.gardesMap);
-                                    },
-                                    borderRadius: BorderRadius.circular(30),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withValues(alpha: 0.14),
-                                        borderRadius: BorderRadius.circular(30),
-                                        border: Border.all(
-                                          color: Colors.white.withValues(alpha: 0.28),
-                                          width: 1.2,
-                                        ),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Colors.black.withValues(alpha: 0.15),
-                                            blurRadius: 16,
-                                            offset: const Offset(0, 4),
-                                          ),
-                                        ],
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          // Dual concentric pulsing radar dot
-                                          SizedBox(
-                                            width: 16,
-                                            height: 16,
-                                            child: Stack(
-                                              alignment: Alignment.center,
-                                              children: [
-                                                Container(
-                                                  width: 16,
-                                                  height: 16,
-                                                  decoration: BoxDecoration(
-                                                    shape: BoxShape.circle,
-                                                    color: const Color(0xFF4ADE80).withValues(alpha: 0.4),
-                                                  ),
-                                                )
-                                                    .animate(onPlay: (c) => c.repeat())
-                                                    .scale(begin: const Offset(0.4, 0.4), end: const Offset(1.8, 1.8), duration: 1600.ms, curve: Curves.easeOut)
-                                                    .fadeOut(duration: 1600.ms),
-                                                Container(
-                                                  width: 8,
-                                                  height: 8,
-                                                  decoration: BoxDecoration(
-                                                    color: const Color(0xFF4ADE80),
-                                                    shape: BoxShape.circle,
-                                                    boxShadow: [
-                                                      BoxShadow(
-                                                        color: const Color(0xFF4ADE80).withValues(alpha: 0.9),
-                                                        blurRadius: 6,
-                                                        spreadRadius: 2,
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          const Icon(
-                                            LucideIcons.mapPin,
-                                            size: 14,
-                                            color: Color(0xFF86EFAC),
-                                          ),
-                                          const SizedBox(width: 7),
-                                          Text(
-                                            'Trouvez la pharmacie ouverte',
-                                            style: GoogleFonts.inter(
-                                              fontSize: 12.5,
-                                              fontWeight: FontWeight.w700,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 6),
-                                          const Icon(
-                                            LucideIcons.arrowRight,
-                                            size: 13,
-                                            color: Color(0xFF86EFAC),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                )
-                                    .animate()
-                                    .fadeIn(delay: 280.ms, duration: 400.ms)
-                                    .slideY(begin: 0.2, end: 0, delay: 280.ms, curve: Curves.easeOutCubic)
-                                    .animate(onPlay: (c) => c.repeat())
-                                    .shimmer(delay: 2400.ms, duration: 1600.ms, color: Colors.white24),
+                                // Personalized High-Impact Quick Action Button: "Pharmacie de garde"
+                                _buildPersonalizedPharmacyButton(context, isSmallScreen),
                               ],
                             ),
                           ),
@@ -441,10 +348,10 @@ class _SignInScreenState extends State<SignInScreen> {
                                 ],
                               ),
                               padding: EdgeInsets.fromLTRB(
-                                24,
-                                isSmallScreen ? 20 : 26,
-                                24,
-                                bottomPadding > 0 ? bottomPadding + 14 : 24,
+                                22,
+                                isSmallScreen ? 16 : 22,
+                                22,
+                                bottomPadding > 0 ? bottomPadding + 8 : 18,
                               ),
                               child: AnimatedSwitcher(
                                 duration: const Duration(milliseconds: 320),
@@ -558,7 +465,7 @@ class _SignInScreenState extends State<SignInScreen> {
             .fadeIn(delay: 150.ms, duration: 400.ms)
             .slideX(begin: -0.04, end: 0, delay: 150.ms, curve: Curves.easeOut),
 
-        SizedBox(height: isSmallScreen ? 16 : 22),
+        SizedBox(height: isSmallScreen ? 12 : 18),
 
         // ─── LOGIN INPUT ───
         _buildFieldLabel('IDENTIFIANT OU E-MAIL'),
@@ -574,7 +481,7 @@ class _SignInScreenState extends State<SignInScreen> {
             .fadeIn(delay: 240.ms, duration: 400.ms)
             .slideY(begin: 0.1, end: 0, delay: 240.ms, curve: Curves.easeOut),
 
-        SizedBox(height: isSmallScreen ? 12 : 16),
+        SizedBox(height: isSmallScreen ? 10 : 14),
 
         // ─── PASSWORD INPUT ───
         _buildFieldLabel('MOT DE PASSE'),
@@ -1000,4 +907,127 @@ class _SignInScreenState extends State<SignInScreen> {
       ),
     );
   }
+
+  Widget _buildPersonalizedPharmacyButton(BuildContext context, bool isSmallScreen) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          Navigator.pushNamed(context, AppRoutes.gardesMap);
+        },
+        borderRadius: BorderRadius.circular(30),
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: isSmallScreen ? 12 : 15,
+            vertical: isSmallScreen ? 7 : 8.5,
+          ),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(30),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.24),
+              width: 1.1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.15),
+                blurRadius: 14,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Dual concentric pulsing radar dot
+              SizedBox(
+                width: 14,
+                height: 14,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Container(
+                      width: 14,
+                      height: 14,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: const Color(0xFF4ADE80).withValues(alpha: 0.4),
+                      ),
+                    )
+                        .animate(onPlay: (c) => c.repeat())
+                        .scale(begin: const Offset(0.4, 0.4), end: const Offset(1.9, 1.9), duration: 1500.ms, curve: Curves.easeOut)
+                        .fadeOut(duration: 1500.ms),
+                    Container(
+                      width: 7,
+                      height: 7,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF4ADE80),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF4ADE80).withValues(alpha: 0.9),
+                            blurRadius: 6,
+                            spreadRadius: 1.5,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(
+                LucideIcons.mapPin,
+                size: 14,
+                color: Color(0xFF86EFAC),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'Trouver une pharmacie de garde',
+                style: GoogleFonts.outfit(
+                  fontSize: isSmallScreen ? 12.0 : 12.5,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                  letterSpacing: 0.2,
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Live 24/7 pill badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF4ADE80).withValues(alpha: 0.22),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: const Color(0xFF86EFAC).withValues(alpha: 0.5),
+                    width: 0.8,
+                  ),
+                ),
+                child: Text(
+                  '24/7',
+                  style: GoogleFonts.inter(
+                    fontSize: 9.0,
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFF86EFAC),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              const Icon(
+                LucideIcons.arrowRight,
+                size: 13,
+                color: Color(0xFF86EFAC),
+              ),
+            ],
+          ),
+        ),
+      ),
+    )
+        .animate()
+        .fadeIn(delay: 260.ms, duration: 400.ms)
+        .slideY(begin: 0.2, end: 0, delay: 260.ms, curve: Curves.easeOutCubic)
+        .animate(onPlay: (c) => c.repeat())
+        .shimmer(delay: 3000.ms, duration: 1800.ms, color: Colors.white24);
+  }
 }
+
