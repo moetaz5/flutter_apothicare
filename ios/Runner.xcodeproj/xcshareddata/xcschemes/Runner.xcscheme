@@ -10,7 +10,7 @@
             ActionType = "Xcode.IDEStandardExecutionActionsCore.ExecutionActionType.ShellScriptAction">
             <ActionContent
                title = "Run Prepare Flutter Framework Script"
-               scriptText = "/bin/sh &quot;$FLUTTER_ROOT/packages/flutter_tools/bin/xcode_backend.sh&quot; prepare&#10;">
+               scriptText = "if [ -z &quot;$FLUTTER_ROOT&quot; ] &amp;&amp; [ -f &quot;$SRCROOT/Flutter/flutter_export_environment.sh&quot; ]; then&#10;  . &quot;$SRCROOT/Flutter/flutter_export_environment.sh&quot;&#10;fi&#10;if [ -z &quot;$FLUTTER_ROOT&quot; ] &amp;&amp; [ -f &quot;$SRCROOT/Flutter/Generated.xcconfig&quot; ]; then&#10;  export FLUTTER_ROOT=$(grep -E '^FLUTTER_ROOT=' &quot;$SRCROOT/Flutter/Generated.xcconfig&quot; | cut -d'=' -f2-)&#10;fi&#10;if [ -n &quot;$FLUTTER_ROOT&quot; ] &amp;&amp; [ -f &quot;$FLUTTER_ROOT/packages/flutter_tools/bin/xcode_backend.sh&quot; ]; then&#10;  /bin/sh &quot;$FLUTTER_ROOT/packages/flutter_tools/bin/xcode_backend.sh&quot; prepare&#10;fi&#10;">
                <EnvironmentBuildable>
                   <BuildableReference
                      BuildableIdentifier = "primary"
