@@ -56,6 +56,14 @@ import UserNotifications
     super.application(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken)
   }
 
+  override func application(
+    _ application: UIApplication,
+    didFailToRegisterForRemoteNotificationsWithError error: Error
+  ) {
+    print("[APNs Registration Failed] \(error.localizedDescription)")
+    super.application(application, didFailToRegisterForRemoteNotificationsWithError: error)
+  }
+
   // Ensure push notifications show heads-up banner even when app is active or in background
   override func userNotificationCenter(
     _ center: UNUserNotificationCenter,
