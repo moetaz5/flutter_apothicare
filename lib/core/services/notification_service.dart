@@ -233,21 +233,17 @@ class NotificationService {
   static Future<String?> getFcmToken() async {
     try {
       if (Platform.isIOS) {
-        String? apnsToken = await FirebaseMessaging.instance.getAPNSToken();
+        final apnsToken = await FirebaseMessaging.instance.getAPNSToken();
         if (apnsToken == null) {
-          // Wait up to 3 seconds for iOS APNs token registration
-          for (int i = 0; i < 3; i++) {
-            await Future.delayed(const Duration(seconds: 1));
-            apnsToken = await FirebaseMessaging.instance.getAPNSToken();
-            if (apnsToken != null) break;
-          }
+          debugPrint('[FCM Info] Simulateur iOS : pas de jeton APNs (normal sur simulateur Mac). Les notifications in-app et locales restent 100% actives.');
+          return null;
         }
       }
       final token = await FirebaseMessaging.instance.getToken();
       debugPrint('[FCM Token] $token');
       return token;
     } catch (e) {
-      debugPrint('[FCM Token Error] $e');
+      debugPrint('[FCM Token Info] $e');
       return null;
     }
   }
@@ -255,15 +251,7 @@ class NotificationService {
   /// Sync FCM Device Token with Apothicare Backend (user/updateFcmToken)
   static Future<void> syncFcmToken(ApiClient api) async {
     try {
-      String? token = await getFcmToken();
-      if (token == null && Platform.isIOS) {
-        // Retry with progressive backoff on iOS if APNs was initializing
-        for (int retry = 1; retry <= 3; retry++) {
-          await Future.delayed(Duration(seconds: retry * 2));
-          token = await getFcmToken();
-          if (token != null) break;
-        }
-      }
+      final token = await getFcmToken();
       if (token != null && token.isNotEmpty) {
         await api.post('user/updateFcmToken', data: {
           'fcm_token': token,
@@ -307,11 +295,13 @@ class NotificationService {
 
     try {
       // 3. Delete FCM token so Google/Apple push servers permanently stop routing notifications to this device token
+      if (Platform.isIOS) {
+        final apns = await FirebaseMessaging.instance.getAPNSToken();
+        if (apns == null) return;
+      }
       await FirebaseMessaging.instance.deleteToken();
       debugPrint('[FCM Logout] Successfully deleted FCM registration token');
-    } catch (e) {
-      debugPrint('[FCM Logout Error] Delete token failed: $e');
-    }
+    } catch (_) {}
   }
 
   /// Show standard system notification
