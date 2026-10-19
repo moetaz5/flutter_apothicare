@@ -1,9 +1,9 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
-import 'package:webview_flutter_android/webview_flutter_android.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/routes/app_routes.dart';
@@ -23,61 +23,96 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
   bool _isLoading = true;
   int _loadingProgress = 0;
   bool _hasError = false;
+  bool _isTransitionComplete = false;
 
   @override
   void initState() {
     super.initState();
     _initWebView();
+    _waitForRouteTransition();
+  }
+
+  void _waitForRouteTransition() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final animation = ModalRoute.of(context)?.animation;
+      if (animation != null) {
+        if (animation.isCompleted) {
+          if (mounted) setState(() => _isTransitionComplete = true);
+        } else {
+          animation.addStatusListener((status) {
+            if (status == AnimationStatus.completed && mounted) {
+              setState(() => _isTransitionComplete = true);
+            }
+          });
+        }
+      } else {
+        if (mounted) setState(() => _isTransitionComplete = true);
+      }
+
+      // Fallback: guaranteed mount after 280ms even if no animation listener fires
+      Future.delayed(const Duration(milliseconds: 280), () {
+        if (mounted && !_isTransitionComplete) {
+          setState(() => _isTransitionComplete = true);
+        }
+      });
+    });
   }
 
   void _initWebView() {
     try {
-      WebViewPlatform.instance ??= AndroidWebViewPlatform();
-
       final controller = WebViewController()
         ..setJavaScriptMode(JavaScriptMode.unrestricted)
-        ..setBackgroundColor(Colors.white)
-        ..setUserAgent(
+        ..setBackgroundColor(Colors.white);
+
+      if (Platform.isAndroid) {
+        controller.setUserAgent(
           'Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36',
-        )
-        ..setNavigationDelegate(
-          NavigationDelegate(
-            onProgress: (int progress) {
-              if (mounted) {
+        );
+      }
+
+      controller.setNavigationDelegate(
+        NavigationDelegate(
+          onProgress: (int progress) {
+            if (mounted) {
+              // Throttle rebuilds to avoid dropped frames
+              if ((progress - _loadingProgress).abs() >= 15 || progress >= 95 || progress == 0) {
                 setState(() {
                   _loadingProgress = progress;
-                  if (progress >= 40) {
+                  if (progress >= 35 && _isLoading) {
                     _isLoading = false;
                   }
                 });
               }
-            },
-            onPageStarted: (String url) {
-              if (mounted) {
-                setState(() {
-                  _isLoading = true;
-                  _hasError = false;
-                });
-              }
-            },
-            onPageFinished: (String url) {
-              if (mounted) {
-                setState(() {
-                  _isLoading = false;
-                });
-              }
-            },
-            onWebResourceError: (WebResourceError error) {
-              if (mounted && error.isForMainFrame == true) {
-                setState(() {
-                  _isLoading = false;
-                  _hasError = true;
-                });
-              }
-            },
-          ),
-        )
-        ..loadRequest(Uri.parse('https://cerebogeo.medicacom.tn/'));
+            }
+          },
+          onPageStarted: (String url) {
+            if (mounted) {
+              setState(() {
+                _isLoading = true;
+                _hasError = false;
+              });
+            }
+          },
+          onPageFinished: (String url) {
+            if (mounted) {
+              setState(() {
+                _isLoading = false;
+                _loadingProgress = 100;
+              });
+            }
+          },
+          onWebResourceError: (WebResourceError error) {
+            if (mounted && error.isForMainFrame == true) {
+              setState(() {
+                _isLoading = false;
+                _hasError = true;
+              });
+            }
+          },
+        ),
+      );
+
+      controller.loadRequest(Uri.parse('https://cerebogeo.medicacom.tn/'));
 
       setState(() {
         _webViewController = controller;
@@ -444,6 +479,46 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                               ),
                             ],
                           ),
+                        ),
+                      )
+                    else if (!_isTransitionComplete)
+                      Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(18),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF0FDF4),
+                                shape: BoxShape.circle,
+                                border: Border.all(color: const Color(0xFFDCFCE7), width: 1.5),
+                              ),
+                              child: const Icon(LucideIcons.bot, size: 38, color: Color(0xFF22C55E)),
+                            ),
+                            const SizedBox(height: 16),
+                            const Text(
+                              'Chargement d\'Ibn Jazzar...',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF1E293B),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            const Text(
+                              'Votre assistant intelligent CNOPT',
+                              style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                            ),
+                            const SizedBox(height: 20),
+                            const SizedBox(
+                              width: 140,
+                              child: LinearProgressIndicator(
+                                backgroundColor: Color(0xFFE2E8F0),
+                                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF22C55E)),
+                                minHeight: 3,
+                              ),
+                            ),
+                          ],
                         ),
                       )
                     else if (_webViewController != null) ...[
