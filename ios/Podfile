@@ -1,3 +1,6 @@
+# Use official GitHub specs repo (avoids cdn.jsdelivr.net DNS resolution failure)
+source 'https://github.com/CocoaPods/Specs.git'
+
 # Set platform to 15.0 matching project.pbxproj and modern Firebase / GoogleMaps
 platform :ios, '15.0'
 
