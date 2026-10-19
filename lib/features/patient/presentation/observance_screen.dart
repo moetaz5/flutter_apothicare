@@ -564,6 +564,17 @@ class _ObservanceScreenState extends State<ObservanceScreen> {
     );
   }
 
+  String _sanitizeText(String text) {
+    return text
+        .replaceAll('æg', 'µg')
+        .replaceAll('G,l.', 'Gél.')
+        .replaceAll('Comp.S,c.', 'Comp. Séc.')
+        .replaceAll('Comp.Enr.', 'Comp. Enr.')
+        .replaceAll('Gastro-r,sist.', 'Gastro-résist.')
+        .replaceAll('r,sist.', 'résist.')
+        .replaceAll(',sist.', 'ésist.');
+  }
+
   // ─── PATIENT MEDICAMENTS LIST / TABLE CARD ───
   Widget _buildPatientMedicamentsCard() {
     return Container(
@@ -585,17 +596,34 @@ class _ObservanceScreenState extends State<ObservanceScreen> {
         children: [
           // Header + Nouvelle Dispensation button
           Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Expanded(
-                child: Text(
-                  'Médicaments du patient (${_patientMedicaments.length})',
-                  style: const TextStyle(
-                    fontSize: 14.5,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF163820),
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'Médicaments du patient',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF163820),
+                        letterSpacing: -0.2,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${_patientMedicaments.length} traitement${_patientMedicaments.length > 1 ? 's' : ''} enregistré${_patientMedicaments.length > 1 ? 's' : ''}',
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF64748B),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(width: 8),
@@ -615,7 +643,7 @@ class _ObservanceScreenState extends State<ObservanceScreen> {
                   },
                   borderRadius: BorderRadius.circular(30),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7.5),
+                    padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7.5),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(30),
                       boxShadow: [
@@ -635,7 +663,7 @@ class _ObservanceScreenState extends State<ObservanceScreen> {
                           'Nouvelle dispensation',
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 12,
+                            fontSize: 11.5,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -689,52 +717,75 @@ class _ObservanceScreenState extends State<ObservanceScreen> {
               itemBuilder: (ctx, i) {
                 final item = _patientMedicaments[i];
                 final medicament = item['medicaments'] is Map ? item['medicaments'] as Map<String, dynamic> : {};
-                final produit = medicament['produit']?.toString() ?? item['produit']?.toString() ?? 'Médicament';
+                final rawProduit = medicament['produit']?.toString() ?? item['produit']?.toString() ?? 'Médicament';
+                final produit = _sanitizeText(rawProduit);
                 final posologie = item['posologie']?.toString() ?? '-';
                 final duree = item['duree']?.toString() ?? '-';
                 final dateDebut = item['date_debut']?.toString() ?? '-';
                 final dateFin = item['date_fin']?.toString() ?? '-';
                 final reste = PatientProvider.calculerReste(item['date_debut']?.toString(), item['duree']);
+                final bool isEnCours = reste is int && reste > 0;
 
                 return Container(
-                  padding: const EdgeInsets.all(14),
+                  padding: const EdgeInsets.all(13),
                   decoration: BoxDecoration(
                     color: const Color(0xFFF9FAFB),
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: const Color(0xFFF1F5F9)),
+                    border: Border.all(
+                      color: isEnCours ? const Color(0xFF86EFAC) : const Color(0xFFF1F5F9),
+                      width: isEnCours ? 1.2 : 1,
+                    ),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Ligne 1 : Nom du produit + Badge statut
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Expanded(
                             child: Text(
                               produit,
                               style: const TextStyle(
-                                fontSize: 14,
+                                fontSize: 13.5,
                                 fontWeight: FontWeight.w800,
                                 color: Color(0xFF163820),
+                                height: 1.25,
                               ),
-                              maxLines: 1,
+                              maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          if (reste is int && reste > 0)
+                          const SizedBox(width: 8),
+                          if (isEnCours)
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
                               decoration: BoxDecoration(
                                 color: const Color(0xFFDCFCE7),
                                 borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: const Color(0xFF86EFAC), width: 0.8),
                               ),
-                              child: Text(
-                                '$reste jours restants',
-                                style: const TextStyle(
-                                  color: Color(0xFF15803D),
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 6,
+                                    height: 6,
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFF16A34A),
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '$reste j restants',
+                                    style: const TextStyle(
+                                      color: Color(0xFF15803D),
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
                               ),
                             )
                           else
@@ -749,30 +800,87 @@ class _ObservanceScreenState extends State<ObservanceScreen> {
                                 style: TextStyle(
                                   color: Color(0xFF64748B),
                                   fontSize: 11,
-                                  fontWeight: FontWeight.w700,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ),
                         ],
                       ),
                       const SizedBox(height: 8),
-                      Row(
+
+                      // Ligne 2 : Badges Posologie & Durée (Wrap pour flexibilité sans overflow)
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 5,
+                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
-                          const Icon(LucideIcons.clock, size: 13, color: Color(0xFF64748B)),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Posologie: $posologie',
-                            style: const TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
-                          ),
-                          const Spacer(),
-                          const Icon(LucideIcons.calendar, size: 13, color: Color(0xFF64748B)),
-                          const SizedBox(width: 4),
-                          Text(
-                            '$duree jours ($dateDebut - $dateFin)',
-                            style: const TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
-                          ),
+                          if (posologie != '-' && posologie.isNotEmpty)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF71A246).withValues(alpha: 0.10),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(LucideIcons.clock, size: 12, color: Color(0xFF5D8A38)),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Posologie: $posologie',
+                                    style: const TextStyle(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF2E6028),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          if (duree != '-' && duree.isNotEmpty)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE2E8F0).withValues(alpha: 0.6),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                '$duree jours',
+                                style: const TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF475569),
+                                ),
+                              ),
+                            ),
                         ],
                       ),
+
+                      // Ligne 3 : Dates du traitement
+                      if ((dateDebut != '-' && dateDebut.isNotEmpty) || (dateFin != '-' && dateFin.isNotEmpty)) ...[
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            const Icon(LucideIcons.calendar, size: 12, color: Color(0xFF94A3B8)),
+                            const SizedBox(width: 5),
+                            Expanded(
+                              child: Text(
+                                (dateDebut != '-' && dateFin != '-')
+                                    ? 'Du $dateDebut au $dateFin'
+                                    : dateDebut != '-'
+                                        ? 'Début: $dateDebut'
+                                        : 'Fin: $dateFin',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: Color(0xFF64748B),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 );
@@ -841,7 +949,8 @@ class _ObservanceScreenState extends State<ObservanceScreen> {
               itemBuilder: (ctx, i) {
                 final item = activeList[i];
                 final medicament = item['medicaments'] is Map ? item['medicaments'] as Map<String, dynamic> : {};
-                final produit = medicament['produit']?.toString() ?? item['produit']?.toString() ?? 'Médicament';
+                final rawProduit = medicament['produit']?.toString() ?? item['produit']?.toString() ?? 'Médicament';
+                final produit = _sanitizeText(rawProduit);
                 final posologie = item['posologie']?.toString() ?? '-';
                 final duree = item['duree']?.toString() ?? '-';
                 final reste = PatientProvider.calculerReste(item['date_debut']?.toString(), item['duree']);

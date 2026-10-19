@@ -14,6 +14,7 @@ class MessagerieUser {
   final int? idGouvernorat;
   final String? lastMessageDate;
   final String? lastMessage;
+  final int unreadCount;
 
   MessagerieUser({
     required this.id,
@@ -26,7 +27,18 @@ class MessagerieUser {
     this.idGouvernorat,
     this.lastMessageDate,
     this.lastMessage,
+    this.unreadCount = 0,
   });
+
+  bool get isIndustrie => idRole == 6;
+  bool get isPharmacien => idRole == 2 || idRole == 7 || idRole == 8 || (idRole != 6 && idRole != 1 && idRole != 3);
+  bool get isAdmin => idRole == 1;
+
+  String get roleLabel {
+    if (isIndustrie) return 'Industrie';
+    if (isAdmin) return 'Admin';
+    return 'Pharmacien';
+  }
 
   factory MessagerieUser.fromMap(Map<dynamic, dynamic> json) {
     var rawNom = (json['nom'] ?? json['username'] ?? json['login'] ?? 'Utilisateur').toString().trim();
@@ -55,6 +67,13 @@ class MessagerieUser {
         json['dernier_message'] ??
         json['message_content'];
 
+    final rawUnread = json['unread'] ??
+        json['unread_count'] ??
+        json['count_unread'] ??
+        json['nb_non_lu'] ??
+        json['non_lu'];
+    final parsedUnread = int.tryParse(rawUnread?.toString() ?? '') ?? 0;
+
     return MessagerieUser(
       id: parsedId,
       nom: rawNom,
@@ -68,6 +87,7 @@ class MessagerieUser {
           : int.tryParse(json['id_gouvernorat']?.toString() ?? ''),
       lastMessageDate: rawLastDate?.toString(),
       lastMessage: rawLastMsg?.toString(),
+      unreadCount: parsedUnread,
     );
   }
 }
@@ -177,6 +197,12 @@ class MessagerieProvider extends ChangeNotifier {
             .map((item) => MessagerieUser.fromMap(item))
             .where((u) => u.id != 0 && (idUser == null || u.id != idUser))
             .toList();
+
+        for (final u in _users) {
+          if (u.unreadCount > 0 && !_unreadCounts.containsKey(u.id)) {
+            _unreadCounts[u.id] = u.unreadCount;
+          }
+        }
       }
 
       // Refresh unread counts in parallel without blocking

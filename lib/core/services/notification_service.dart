@@ -14,18 +14,7 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   try {
     await Firebase.initializeApp();
   } catch (_) {}
-
-  // Check if a user is currently authenticated on this device
-  try {
-    await StorageService.init();
-    final token = StorageService.getToken();
-    if (token == null || token.isEmpty) {
-      debugPrint('[FCM Background] User is logged out. Discarding notification: ${message.messageId}');
-      return;
-    }
-  } catch (e) {
-    debugPrint('[FCM Background] Auth check error: $e');
-  }
+  
 
   debugPrint('[FCM Background] Message received while app closed/background: ${message.messageId}');
 
@@ -268,9 +257,12 @@ class NotificationService {
     try {
       String? token = await getFcmToken();
       if (token == null && Platform.isIOS) {
-        // Retry once after 3 seconds on iOS if APNs was initializing
-        await Future.delayed(const Duration(seconds: 3));
-        token = await getFcmToken();
+        // Retry with progressive backoff on iOS if APNs was initializing
+        for (int retry = 1; retry <= 3; retry++) {
+          await Future.delayed(Duration(seconds: retry * 2));
+          token = await getFcmToken();
+          if (token != null) break;
+        }
       }
       if (token != null && token.isNotEmpty) {
         await api.post('user/updateFcmToken', data: {
@@ -278,6 +270,18 @@ class NotificationService {
         });
         debugPrint('[FCM Sync] Token successfully registered on server: $token');
       }
+
+      // Automatically listen to future token refreshes (APNs updates, app reinstalls)
+      FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
+        if (newToken.isNotEmpty) {
+          try {
+            await api.post('user/updateFcmToken', data: {'fcm_token': newToken});
+            debugPrint('[FCM onTokenRefresh] Refreshed token synced to server: $newToken');
+          } catch (e) {
+            debugPrint('[FCM onTokenRefresh Error] $e');
+          }
+        }
+      });
     } catch (e) {
       debugPrint('[FCM Sync Error] Failed to update token on server: $e');
     }

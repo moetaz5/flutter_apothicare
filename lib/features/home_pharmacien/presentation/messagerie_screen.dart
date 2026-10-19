@@ -33,6 +33,7 @@ class _MessagerieScreenState extends State<MessagerieScreen> {
   final TextEditingController _newChatSearchController = TextEditingController();
   String _searchQuery = '';
   String _newChatSearchQuery = '';
+  String _selectedFilter = 'all'; // 'all' | 'pharmacien' | 'industrie'
   MessagerieUser? _activeChatUser;
   final TextEditingController _msgInputController = TextEditingController();
   final ScrollController _chatScrollController = ScrollController();
@@ -362,9 +363,138 @@ class _MessagerieScreenState extends State<MessagerieScreen> {
     return _avatarColors[hash % _avatarColors.length];
   }
 
-  void _showNewConversationModal(List<MessagerieUser> allUsers) {
+  Widget _buildFilterChip({
+    required String label,
+    required int count,
+    required bool isSelected,
+    required VoidCallback onTap,
+    IconData? icon,
+    Color activeColor = AppColors.primaryGreen,
+    int unreadCount = 0,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+            decoration: BoxDecoration(
+              color: isSelected ? activeColor : Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isSelected ? activeColor : const Color(0xFFCBD5E1),
+                width: isSelected ? 1.5 : 1,
+              ),
+              boxShadow: isSelected
+                  ? [
+                      BoxShadow(
+                        color: activeColor.withValues(alpha: 0.28),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ]
+                  : [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.02),
+                        blurRadius: 4,
+                        offset: const Offset(0, 1),
+                      ),
+                    ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (icon != null) ...[
+                  Icon(
+                    icon,
+                    size: 13,
+                    color: isSelected ? Colors.white : const Color(0xFF64748B),
+                  ),
+                  const SizedBox(width: 5),
+                ],
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                    color: isSelected ? Colors.white : const Color(0xFF334155),
+                  ),
+                ),
+                const SizedBox(width: 5),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? Colors.white.withValues(alpha: 0.25)
+                        : const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    count.toString(),
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w800,
+                      color: isSelected ? Colors.white : const Color(0xFF64748B),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Red notification badge for unread messages
+          if (unreadCount > 0)
+            Positioned(
+              top: -6,
+              right: -3,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFEF4444), Color(0xFFDC2626)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.white, width: 1.5),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFEF4444).withValues(alpha: 0.45),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1.5),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(LucideIcons.messageSquare, size: 8, color: Colors.white),
+                    const SizedBox(width: 2.5),
+                    Text(
+                      unreadCount > 99 ? '99+' : unreadCount.toString(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w900,
+                        height: 1.0,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  void _showNewConversationModal(List<MessagerieUser> allUsers, {String initialFilter = 'all'}) {
     _newChatSearchController.clear();
     _newChatSearchQuery = '';
+    String modalFilter = initialFilter;
 
     showModalBottomSheet(
       context: context,
@@ -372,9 +502,34 @@ class _MessagerieScreenState extends State<MessagerieScreen> {
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
         builder: (modalCtx, setModalState) {
+          final pharmacienTotalCount = allUsers.where((u) => u.isPharmacien).length;
+          final industrieTotalCount = allUsers.where((u) => u.isIndustrie).length;
+
+          final unreadCounts = context.read<MessagerieProvider>().unreadCounts;
+          int modalPharmacienUnread = 0;
+          int modalIndustrieUnread = 0;
+          int modalTotalUnread = 0;
+
+          for (final u in allUsers) {
+            final count = unreadCounts[u.id] ?? u.unreadCount;
+            if (count > 0) {
+              modalTotalUnread += count;
+              if (u.isIndustrie) {
+                modalIndustrieUnread += count;
+              } else {
+                modalPharmacienUnread += count;
+              }
+            }
+          }
+
           final filtered = allUsers.where((u) {
-            if (_newChatSearchQuery.isEmpty) return true;
-            return u.nom.toLowerCase().contains(_newChatSearchQuery.toLowerCase());
+            if (modalFilter == 'pharmacien' && !u.isPharmacien) return false;
+            if (modalFilter == 'industrie' && !u.isIndustrie) return false;
+            if (_newChatSearchQuery.isNotEmpty &&
+                !u.nom.toLowerCase().contains(_newChatSearchQuery.toLowerCase())) {
+              return false;
+            }
+            return true;
           }).toList()
             ..sort((a, b) => a.nom.compareTo(b.nom));
 
@@ -464,7 +619,53 @@ class _MessagerieScreenState extends State<MessagerieScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
+
+                // Modal Filter Chips
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    physics: const BouncingScrollPhysics(),
+                    clipBehavior: Clip.none,
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 6, bottom: 2),
+                      child: Row(
+                        children: [
+                          _buildFilterChip(
+                            label: 'Tous',
+                            count: allUsers.length,
+                            unreadCount: modalTotalUnread,
+                            isSelected: modalFilter == 'all',
+                            icon: LucideIcons.messagesSquare,
+                            onTap: () => setModalState(() => modalFilter = 'all'),
+                          ),
+                          const SizedBox(width: 8),
+                          _buildFilterChip(
+                            label: 'Pharmaciens',
+                            count: pharmacienTotalCount,
+                            unreadCount: modalPharmacienUnread,
+                            isSelected: modalFilter == 'pharmacien',
+                            icon: LucideIcons.pill,
+                            activeColor: const Color(0xFF16A34A),
+                            onTap: () => setModalState(() => modalFilter = 'pharmacien'),
+                          ),
+                          const SizedBox(width: 8),
+                          _buildFilterChip(
+                            label: 'Industrie',
+                            count: industrieTotalCount,
+                            unreadCount: modalIndustrieUnread,
+                            isSelected: modalFilter == 'industrie',
+                            icon: LucideIcons.building2,
+                            activeColor: const Color(0xFF2563EB),
+                            onTap: () => setModalState(() => modalFilter = 'industrie'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
 
                 // Contact list
                 Expanded(
@@ -509,23 +710,58 @@ class _MessagerieScreenState extends State<MessagerieScreen> {
                                   ),
                                 ),
                               ),
-                              title: Text(
-                                u.nom.toUpperCase(),
-                                style: const TextStyle(
-                                  fontSize: 13.5,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF1E293B),
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              subtitle: u.login != null && u.login!.isNotEmpty
-                                  ? Text(
-                                      u.login!,
-                                      style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
+                              title: Row(
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      u.nom.toUpperCase(),
+                                      style: const TextStyle(
+                                        fontSize: 13.5,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFF1E293B),
+                                      ),
                                       maxLines: 1,
-                                    )
-                                  : null,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  if (u.isIndustrie)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF2563EB).withValues(alpha: 0.10),
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(
+                                          color: const Color(0xFF2563EB).withValues(alpha: 0.3),
+                                          width: 0.8,
+                                        ),
+                                      ),
+                                      child: const Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(LucideIcons.building2, size: 9, color: Color(0xFF2563EB)),
+                                          SizedBox(width: 2.5),
+                                          Text(
+                                            'INDUS',
+                                            style: TextStyle(
+                                              fontSize: 8.5,
+                                              fontWeight: FontWeight.w800,
+                                              color: Color(0xFF2563EB),
+                                              letterSpacing: 0.2,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              subtitle: Text(
+                                u.isIndustrie
+                                    ? 'Laboratoire / Industrie pharmaceutique'
+                                    : (u.login != null && u.login!.isNotEmpty ? u.login! : 'Pharmacien'),
+                                style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
+                                maxLines: 1,
+                              ),
                               trailing: const Icon(LucideIcons.messageSquarePlus, size: 18, color: Color(0xFF3B82F6)),
                               onTap: () {
                                 Navigator.pop(modalCtx);
@@ -659,8 +895,21 @@ class _MessagerieScreenState extends State<MessagerieScreen> {
       return a.nom.toLowerCase().compareTo(b.nom.toLowerCase());
     });
 
+    // Filter active conversations by role
+    final pharmacienActiveCount = activeUsers.where((u) => u.isPharmacien).length;
+    final industrieActiveCount = activeUsers.where((u) => u.isIndustrie).length;
+
+    final filteredByRole = activeUsers.where((u) {
+      if (_selectedFilter == 'pharmacien') {
+        return u.isPharmacien;
+      } else if (_selectedFilter == 'industrie') {
+        return u.isIndustrie;
+      }
+      return true;
+    }).toList();
+
     // 3. Apply search query on active conversations
-    final displayConversations = activeUsers.where((u) {
+    final displayConversations = filteredByRole.where((u) {
       if (_searchQuery.isEmpty) return true;
       return u.nom.toLowerCase().contains(_searchQuery.toLowerCase());
     }).toList();
@@ -669,7 +918,16 @@ class _MessagerieScreenState extends State<MessagerieScreen> {
       backgroundColor: const Color(0xFFF6F8FA),
       body: _activeChatUser != null
           ? _buildChatView(topPadding, auth.currentUser?.id ?? 0, messagerie)
-          : _buildConversationListView(topPadding, messagerie, allUsers, displayConversations, unreadCounts),
+          : _buildConversationListView(
+              topPadding,
+              messagerie,
+              allUsers,
+              displayConversations,
+              unreadCounts,
+              totalActiveCount: activeUsers.length,
+              pharmacienActiveCount: pharmacienActiveCount,
+              industrieActiveCount: industrieActiveCount,
+            ),
       bottomNavigationBar: _activeChatUser == null
           ? AppBottomNavBar(
               currentIndex: 0,
@@ -685,8 +943,36 @@ class _MessagerieScreenState extends State<MessagerieScreen> {
     MessagerieProvider messagerie,
     List<MessagerieUser> allUsers,
     List<MessagerieUser> conversations,
-    Map<int, int> unreadCounts,
-  ) {
+    Map<int, int> unreadCounts, {
+    required int totalActiveCount,
+    required int pharmacienActiveCount,
+    required int industrieActiveCount,
+  }) {
+    // Unread counts per filter category
+    int pharmacienUnreadCount = 0;
+    int industrieUnreadCount = 0;
+    int totalUnreadCount = 0;
+
+    for (final u in allUsers) {
+      final count = unreadCounts[u.id] ?? u.unreadCount;
+      if (count > 0) {
+        totalUnreadCount += count;
+        if (u.isIndustrie) {
+          industrieUnreadCount += count;
+        } else {
+          pharmacienUnreadCount += count;
+        }
+      }
+    }
+
+    for (final entry in unreadCounts.entries) {
+      if (allUsers.any((u) => u.id == entry.key)) continue;
+      if (entry.value > 0) {
+        totalUnreadCount += entry.value;
+        pharmacienUnreadCount += entry.value;
+      }
+    }
+
     return SingleChildScrollView(
       child: Column(
         children: [
@@ -973,6 +1259,49 @@ class _MessagerieScreenState extends State<MessagerieScreen> {
                             ),
                           ),
                         ),
+                        const SizedBox(height: 12),
+
+                        // Filter Chips: Tous | Pharmaciens | Industrie
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          physics: const BouncingScrollPhysics(),
+                          clipBehavior: Clip.none,
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 6, bottom: 2),
+                            child: Row(
+                              children: [
+                                _buildFilterChip(
+                                  label: 'Tous',
+                                  count: totalActiveCount,
+                                  unreadCount: totalUnreadCount,
+                                  isSelected: _selectedFilter == 'all',
+                                  icon: LucideIcons.messagesSquare,
+                                  onTap: () => setState(() => _selectedFilter = 'all'),
+                                ),
+                                const SizedBox(width: 8),
+                                _buildFilterChip(
+                                  label: 'Pharmaciens',
+                                  count: pharmacienActiveCount,
+                                  unreadCount: pharmacienUnreadCount,
+                                  isSelected: _selectedFilter == 'pharmacien',
+                                  icon: LucideIcons.pill,
+                                  activeColor: const Color(0xFF16A34A),
+                                  onTap: () => setState(() => _selectedFilter = 'pharmacien'),
+                                ),
+                                const SizedBox(width: 8),
+                                _buildFilterChip(
+                                  label: 'Industrie',
+                                  count: industrieActiveCount,
+                                  unreadCount: industrieUnreadCount,
+                                  isSelected: _selectedFilter == 'industrie',
+                                  icon: LucideIcons.building2,
+                                  activeColor: const Color(0xFF2563EB),
+                                  onTap: () => setState(() => _selectedFilter = 'industrie'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -1023,19 +1352,25 @@ class _MessagerieScreenState extends State<MessagerieScreen> {
                             child: const Icon(LucideIcons.messageSquarePlus, size: 28, color: Color(0xFF94A3B8)),
                           ),
                           const SizedBox(height: 14),
-                          const Text(
-                            'Aucune conversation récente',
-                            style: TextStyle(
+                          Text(
+                            _selectedFilter == 'industrie'
+                                ? 'Aucune discussion avec l\'industrie'
+                                : (_selectedFilter == 'pharmacien'
+                                    ? 'Aucune discussion avec un pharmacien'
+                                    : 'Aucune conversation récente'),
+                            style: const TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w800,
                               color: Color(0xFF1E293B),
                             ),
                           ),
                           const SizedBox(height: 6),
-                          const Text(
-                            'Appuyez sur le bouton "+" pour démarrer un échange avec un confrère ou partenaire.',
+                          Text(
+                            _selectedFilter != 'all'
+                                ? 'Appuyez ci-dessous pour démarrer un nouvel échange.'
+                                : 'Appuyez sur le bouton "+" pour démarrer un échange avec un confrère ou partenaire.',
                             textAlign: TextAlign.center,
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontSize: 12.5,
                               color: Color(0xFF64748B),
                               height: 1.35,
@@ -1043,7 +1378,7 @@ class _MessagerieScreenState extends State<MessagerieScreen> {
                           ),
                           const SizedBox(height: 18),
                           ElevatedButton.icon(
-                            onPressed: () => _showNewConversationModal(allUsers),
+                            onPressed: () => _showNewConversationModal(allUsers, initialFilter: _selectedFilter),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.primaryGreen,
                               foregroundColor: Colors.white,
@@ -1115,16 +1450,51 @@ class _MessagerieScreenState extends State<MessagerieScreen> {
                                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
                                           Expanded(
-                                            child: Text(
-                                              u.nom.toUpperCase(),
-                                              style: TextStyle(
-                                                fontSize: 13,
-                                                fontWeight: unread > 0 ? FontWeight.w800 : FontWeight.w700,
-                                                color: const Color(0xFF1E293B),
-                                                letterSpacing: -0.2,
-                                              ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
+                                            child: Row(
+                                              children: [
+                                                Flexible(
+                                                  child: Text(
+                                                    u.nom.toUpperCase(),
+                                                    style: TextStyle(
+                                                      fontSize: 13,
+                                                      fontWeight: unread > 0 ? FontWeight.w800 : FontWeight.w700,
+                                                      color: const Color(0xFF1E293B),
+                                                      letterSpacing: -0.2,
+                                                    ),
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 6),
+                                                if (u.isIndustrie)
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                                                    decoration: BoxDecoration(
+                                                      color: const Color(0xFF2563EB).withValues(alpha: 0.10),
+                                                      borderRadius: BorderRadius.circular(6),
+                                                      border: Border.all(
+                                                        color: const Color(0xFF2563EB).withValues(alpha: 0.3),
+                                                        width: 0.8,
+                                                      ),
+                                                    ),
+                                                    child: const Row(
+                                                      mainAxisSize: MainAxisSize.min,
+                                                      children: [
+                                                        Icon(LucideIcons.building2, size: 9, color: Color(0xFF2563EB)),
+                                                        SizedBox(width: 2.5),
+                                                        Text(
+                                                          'INDUS',
+                                                          style: TextStyle(
+                                                            fontSize: 8.5,
+                                                            fontWeight: FontWeight.w800,
+                                                            color: Color(0xFF2563EB),
+                                                            letterSpacing: 0.2,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                              ],
                                             ),
                                           ),
                                           if (u.lastMessageDate != null &&

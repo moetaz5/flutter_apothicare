@@ -47,8 +47,9 @@ class InAppRouteService {
   }) async {
     try {
       // Query OSRM road network for accurate geometry, distance & steps
+      final osrmProfile = profile == 'walking' ? 'walking' : 'driving';
       final url = Uri.parse(
-        'https://router.project-osrm.org/route/v1/driving/'
+        'https://router.project-osrm.org/route/v1/$osrmProfile/'
         '${origin.longitude},${origin.latitude};'
         '${destination.longitude},${destination.latitude}'
         '?overview=full&geometries=geojson&steps=true',

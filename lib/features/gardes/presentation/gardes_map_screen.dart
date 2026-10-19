@@ -35,6 +35,8 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
   bool _isInitialLocating = true;
   bool _isSatellite = false;
   bool _isListView = false;
+  bool _filterInjection = false;
+  bool _filterVeterinaire = false;
   GardeModel? _selectedPharmacy;
   Set<Marker> _markers = {};
   Set<Polyline> _polylines = {};
@@ -211,18 +213,28 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
 
   void _onSearchChanged(String val) {
     _debounceTimer?.cancel();
-    _debounceTimer = Timer(const Duration(milliseconds: 180), () {
+    _debounceTimer = Timer(const Duration(milliseconds: 250), () {
+      if (!mounted) return;
       final provider = context.read<GardeProvider>();
       provider.setSearchQuery(val);
       _buildMarkers(provider.gardes);
-
-      if (val.trim().isNotEmpty && provider.gardes.isNotEmpty) {
-        final first = provider.gardes.first;
-        if (first.lat != null && first.lng != null && first.lat != 0) {
-          _animateToLocation(first.lat!, first.lng!, zoom: 15.5);
-        }
-      }
     });
+  }
+
+  void _onSearchSubmitted(String val) {
+    _debounceTimer?.cancel();
+    if (!mounted) return;
+    final provider = context.read<GardeProvider>();
+    provider.setSearchQuery(val);
+    _buildMarkers(provider.gardes);
+
+    // Only move camera when user explicitly presses Search on keyboard
+    if (val.trim().isNotEmpty && provider.gardes.isNotEmpty) {
+      final first = provider.gardes.first;
+      if (first.lat != null && first.lng != null && first.lat != 0) {
+        _animateToLocation(first.lat!, first.lng!, zoom: 15.5);
+      }
+    }
   }
 
   void _onCameraMove(CameraPosition position) {
@@ -360,16 +372,38 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
       return;
     }
 
+    // ─── SERVICE FILTERING (Injection / Vétérinaire) ───
+    final provider = context.read<GardeProvider>();
+    final bool hasServiceFilter = _filterInjection || _filterVeterinaire;
+
+    // When service filter (Injection or Produit vét.) is active, search across ALL pharmacies
+    // without limiting to the 20 closest proximity or the current camera zone!
+    final List<GardeModel> sourceList = hasServiceFilter ? provider.allGardes : pharmacies;
+
+    final List<GardeModel> activeFiltered = sourceList.where((ph) {
+      if (_filterInjection && !ph.hasInjection) return false;
+      if (_filterVeterinaire && !ph.hasVeterinaire) return false;
+      return true;
+    }).toList();
+
+    if (_selectedPharmacy != null) {
+      final stillVisible = activeFiltered.any((p) => p.id == _selectedPharmacy!.id);
+      if (!stillVisible) {
+        _selectedPharmacy = null;
+      }
+    }
+
     // ─── NORMAL / AREA DISPLAY ───
     // Initial proximity mode shows the 20 closest pharmacies.
     // Area Search mode ("Rechercher dans cette zone") shows ALL pharmacies visible in the bounds.
-    final bool shouldLimitTo20 = isProximityOnly ?? (!_isAreaSearchActive);
+    // When service filter is active, show ALL matching pharmacies (do not limit to 20).
+    final bool shouldLimitTo20 = (!hasServiceFilter) && (isProximityOnly ?? (!_isAreaSearchActive));
     final int limit = shouldLimitTo20
-        ? (pharmacies.length > _maxVisibleMarkers ? _maxVisibleMarkers : pharmacies.length)
-        : pharmacies.length;
+        ? (activeFiltered.length > _maxVisibleMarkers ? _maxVisibleMarkers : activeFiltered.length)
+        : activeFiltered.length;
 
     for (int i = 0; i < limit; i++) {
-      final ph = pharmacies[i];
+      final ph = activeFiltered[i];
       if (ph.lat != null && ph.lng != null && ph.lat != 0 && ph.lng != 0) {
         final isNight = ph.typeGarde?.toLowerCase().contains('nuit') ?? false;
         final isSelected = _selectedPharmacy?.id == ph.id;
@@ -405,6 +439,17 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
     setState(() {
       _markers = newMarkers;
     });
+  }
+
+  int _getFilteredCount(GardeProvider provider) {
+    final bool hasServiceFilter = _filterInjection || _filterVeterinaire;
+    final list = hasServiceFilter ? provider.allGardes : provider.gardes;
+    if (!hasServiceFilter) return list.length;
+    return list.where((ph) {
+      if (_filterInjection && !ph.hasInjection) return false;
+      if (_filterVeterinaire && !ph.hasVeterinaire) return false;
+      return true;
+    }).length;
   }
 
   Future<void> _animateToLocation(double lat, double lng, {double zoom = 15.2, double tilt = 0.0, double bearing = 0.0}) async {
@@ -514,9 +559,11 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
     final provider = context.read<GardeProvider>();
     LatLng origin;
     final curr = provider.currentPosition;
-    final isTunisia = curr != null && curr.latitude >= 30 && curr.latitude <= 38 && curr.longitude >= 7 && curr.longitude <= 12;
+    final isTunisia = curr != null && curr.latitude >= 30.0 && curr.latitude <= 38.5 && curr.longitude >= 7.0 && curr.longitude <= 12.5;
 
-    if (isTunisia) {
+    if (_currentUserGpsLocation != null) {
+      origin = _currentUserGpsLocation!;
+    } else if (isTunisia) {
       origin = LatLng(curr.latitude, curr.longitude);
     } else {
       origin = LatLng(ph.lat! + 0.008, ph.lng! - 0.009);
@@ -595,7 +642,9 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
     final curr = provider.currentPosition;
     final isTunisia = curr != null && curr.latitude >= 30.0 && curr.latitude <= 38.5 && curr.longitude >= 7.0 && curr.longitude <= 12.5;
 
-    if (isTunisia) {
+    if (_currentUserGpsLocation != null) {
+      startPos = _currentUserGpsLocation!;
+    } else if (isTunisia) {
       startPos = LatLng(curr.latitude, curr.longitude);
     } else {
       startPos = _currentRouteInfo!.points.first;
@@ -611,7 +660,7 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
     }
 
     double initialDistMeters = _currentRouteInfo!.distanceKm * 1000.0;
-    if (_navDestinationPharmacy?.lat != null && _navDestinationPharmacy?.lng != null) {
+    if (initialDistMeters <= 0 && _navDestinationPharmacy?.lat != null && _navDestinationPharmacy?.lng != null) {
       final destPos = LatLng(_navDestinationPharmacy!.lat!, _navDestinationPharmacy!.lng!);
       initialDistMeters = _calculateDistanceKm(startPos.latitude, startPos.longitude, destPos.latitude, destPos.longitude) * 1000.0;
     }
@@ -1669,9 +1718,11 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
                     const SizedBox(width: 5),
                     Flexible(
                       child: Text(
-                        _isAreaSearchActive
-                            ? '${provider.gardes.length} dans cette zone'
-                            : '${provider.gardes.length} à proximité',
+                        (_filterInjection || _filterVeterinaire)
+                            ? '${_getFilteredCount(provider)} avec ce service'
+                            : (_isAreaSearchActive
+                                ? '${_getFilteredCount(provider)} dans cette zone'
+                                : '${_getFilteredCount(provider)} à proximité'),
                         style: const TextStyle(
                           fontSize: 11.5,
                           fontWeight: FontWeight.w800,
@@ -1747,56 +1798,18 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(width: 6),
-                InkWell(
-                  onTap: () => setState(() => _isListView = !_isListView),
-                  borderRadius: BorderRadius.circular(30),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-                    decoration: BoxDecoration(
-                      color: _isListView ? AppColors.forestGreen : Colors.white,
-                      borderRadius: BorderRadius.circular(30),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.12),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          _isListView ? LucideIcons.map : LucideIcons.list,
-                          size: 15,
-                          color: _isListView ? Colors.white : AppColors.forestGreen,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          _isListView ? 'Carte' : 'Liste',
-                          style: TextStyle(
-                            color: _isListView ? Colors.white : AppColors.forestGreen,
-                            fontSize: 12.0,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
               ],
             ),
           ],
         ),
         const SizedBox(height: 8),
 
-        // Search & Filter Pills
+        // Search Bar with Service Filters on the right
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(30),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.1),
@@ -1813,25 +1826,119 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
                 child: TextField(
                   controller: _searchController,
                   onChanged: _onSearchChanged,
+                  onSubmitted: _onSearchSubmitted,
+                  textInputAction: TextInputAction.search,
                   decoration: const InputDecoration(
                     isDense: true,
-                    hintText: 'Rechercher pharmacie, ville…',
+                    hintText: 'Rechercher pharmacie…',
                     hintStyle: TextStyle(fontSize: 12.0, color: AppColors.textMuted),
                     border: InputBorder.none,
                     contentPadding: EdgeInsets.zero,
                   ),
                 ),
               ),
+              ValueListenableBuilder<TextEditingValue>(
+                valueListenable: _searchController,
+                builder: (context, value, _) {
+                  if (value.text.isEmpty) return const SizedBox.shrink();
+                  return Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const SizedBox(width: 2),
+                      InkWell(
+                        onTap: () {
+                          _searchController.clear();
+                          _onSearchChanged('');
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        child: const Padding(
+                          padding: EdgeInsets.all(4),
+                          child: Icon(LucideIcons.x, size: 14, color: AppColors.textMuted),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                    ],
+                  );
+                },
+              ),
+              _buildRightFilterPill(
+                icon: LucideIcons.syringe,
+                label: 'Injection',
+                isActive: _filterInjection,
+                onTap: () {
+                  setState(() {
+                    _filterInjection = !_filterInjection;
+                    if (_filterInjection) {
+                      _filterVeterinaire = false;
+                    }
+                  });
+                  final prov = context.read<GardeProvider>();
+                  _buildMarkers(_filterInjection ? prov.allGardes : prov.gardes);
+                },
+              ),
               const SizedBox(width: 4),
-              _buildMiniFilter('Tous', provider),
-              const SizedBox(width: 3),
-              _buildMiniFilter('Jour', provider),
-              const SizedBox(width: 3),
-              _buildMiniFilter('Nuit', provider),
+              _buildRightFilterPill(
+                icon: LucideIcons.pawPrint,
+                label: 'Produit vét.',
+                isActive: _filterVeterinaire,
+                onTap: () {
+                  setState(() {
+                    _filterVeterinaire = !_filterVeterinaire;
+                    if (_filterVeterinaire) {
+                      _filterInjection = false;
+                    }
+                  });
+                  final prov = context.read<GardeProvider>();
+                  _buildMarkers(_filterVeterinaire ? prov.allGardes : prov.gardes);
+                },
+              ),
             ],
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildRightFilterPill({
+    required IconData icon,
+    required String label,
+    required bool isActive,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+        decoration: BoxDecoration(
+          color: isActive ? AppColors.primaryGreen : const Color(0xFFF1F5F9),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isActive ? AppColors.primaryGreen : const Color(0xFFE2E8F0),
+            width: 1.0,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 13,
+              color: isActive ? Colors.white : AppColors.forestGreen,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
+                color: isActive ? Colors.white : const Color(0xFF334155),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -2156,33 +2263,6 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
     );
   }
 
-  Widget _buildMiniFilter(String label, GardeProvider provider) {
-    final isSelected = provider.filterType == label;
-
-    return InkWell(
-      onTap: () {
-        provider.setFilterType(label);
-        _buildMarkers(provider.gardes);
-      },
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.primaryGreen : const Color(0xFFF3F4F6),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 10.5,
-            fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-            color: isSelected ? Colors.white : const Color(0xFF4B5563),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildSelectedPharmacyCard(GardeModel ph) {
     final isNight = ph.typeGarde?.toLowerCase().contains('nuit') ?? false;
 
@@ -2284,6 +2364,63 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
               ],
             ],
           ),
+          if (ph.hasInjection || ph.hasVeterinaire) ...[
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              runSpacing: 4,
+              children: [
+                if (ph.hasInjection)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFECFDF5),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFA7F3D0)),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(LucideIcons.syringe, size: 12, color: AppColors.primaryGreen),
+                        SizedBox(width: 4),
+                        Text(
+                          "Salle d'injection",
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.forestGreen,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                if (ph.hasVeterinaire)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF0FDF4),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFBBF7D0)),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(LucideIcons.pawPrint, size: 12, color: AppColors.primaryGreen),
+                        SizedBox(width: 4),
+                        Text(
+                          "Produits vétérinaires",
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.forestGreen,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ],
           const SizedBox(height: 14),
 
           // Bouton Consulter la fiche (Identique React)

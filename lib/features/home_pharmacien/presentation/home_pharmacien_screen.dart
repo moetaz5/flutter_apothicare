@@ -423,53 +423,18 @@ class _HomePharmacienScreenState extends State<HomePharmacienScreen> {
                       onTap: () => Navigator.pushNamed(context, AppRoutes.gardesMap),
                     ).animate().fadeIn(delay: 150.ms, duration: 400.ms).scale(begin: const Offset(0.97, 0.97)),
                   ),
-                  const SizedBox(height: 18),
-
-                  // ─── SECTION TITLE: SERVICES PROFESSIONNELS ───
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 22),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Services & Officine',
-                          style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF1E293B),
-                            letterSpacing: -0.3,
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: AppColors.primaryGreen.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Text(
-                            'CNOPT Pro',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.primaryGreenDark,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ).animate().fadeIn(delay: 180.ms, duration: 300.ms),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
 
                   // ─── 6 MODERN CARDS WITH GLOSSY SQUIRCLES ───
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    padding: const EdgeInsets.symmetric(horizontal: 18),
                     child: GridView.count(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
                       crossAxisCount: 2,
                       crossAxisSpacing: 14,
                       mainAxisSpacing: 14,
-                      childAspectRatio: 0.95,
+                      childAspectRatio: 1.0,
                       children: [
                         _buildMenuCard(
                           icon: LucideIcons.calendarSearch,
@@ -551,14 +516,14 @@ class _HomePharmacienScreenState extends State<HomePharmacienScreen> {
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: label != null ? 12 : 10, vertical: 9),
+        padding: EdgeInsets.symmetric(horizontal: label != null ? 14 : 11, vertical: 10),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF1E3820).withValues(alpha: 0.05),
+              color: const Color(0xFF1E3820).withValues(alpha: 0.06),
               blurRadius: 10,
               offset: const Offset(0, 3),
             ),
@@ -570,13 +535,13 @@ class _HomePharmacienScreenState extends State<HomePharmacienScreen> {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(icon, size: 18, color: AppColors.forestGreen),
+                Icon(icon, size: 20, color: AppColors.forestGreen),
                 if (label != null) ...[
-                  const SizedBox(width: 5),
+                  const SizedBox(width: 6),
                   Text(
                     label,
                     style: const TextStyle(
-                      fontSize: 12,
+                      fontSize: 13,
                       fontWeight: FontWeight.w700,
                       color: AppColors.forestGreen,
                     ),
@@ -649,21 +614,21 @@ class _HomePharmacienScreenState extends State<HomePharmacienScreen> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 17),
               child: Row(
                 children: [
                   Container(
-                    width: 50,
-                    height: 50,
-                    padding: const EdgeInsets.all(7),
+                    width: 56,
+                    height: 56,
+                    padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(18),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.20),
-                          blurRadius: 14,
-                          offset: const Offset(0, 5),
+                          color: Colors.black.withValues(alpha: 0.22),
+                          blurRadius: 16,
+                          offset: const Offset(0, 6),
                         ),
                       ],
                     ),
@@ -673,11 +638,11 @@ class _HomePharmacienScreenState extends State<HomePharmacienScreen> {
                       errorBuilder: (ctx, err, stack) => const Icon(
                         LucideIcons.mapPin,
                         color: AppColors.primaryGreen,
-                        size: 26,
+                        size: 28,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 14),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -690,7 +655,7 @@ class _HomePharmacienScreenState extends State<HomePharmacienScreen> {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                  fontSize: 15.5,
+                                  fontSize: 17,
                                   fontWeight: FontWeight.w900,
                                   color: Colors.white,
                                   letterSpacing: -0.3,
@@ -699,14 +664,14 @@ class _HomePharmacienScreenState extends State<HomePharmacienScreen> {
                             ),
                             const SizedBox(width: 6),
                             Container(
-                              width: 8,
-                              height: 8,
+                              width: 9,
+                              height: 9,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 color: const Color(0xFF4ADE80),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: const Color(0xFF4ADE80).withValues(alpha: 0.8),
+                                    color: const Color(0xFF4ADE80).withValues(alpha: 0.85),
                                     blurRadius: 8,
                                     spreadRadius: 2,
                                   ),
@@ -715,36 +680,36 @@ class _HomePharmacienScreenState extends State<HomePharmacienScreen> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 3),
+                        const SizedBox(height: 4),
                         Text(
                           'Trouver la pharmacie ouverte & tour de garde',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontSize: 11.5,
+                            fontSize: 12.5,
                             fontWeight: FontWeight.w500,
-                            color: Colors.white.withValues(alpha: 0.78),
+                            color: Colors.white.withValues(alpha: 0.82),
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 10),
                   Container(
-                    width: 36,
-                    height: 36,
+                    width: 40,
+                    height: 40,
                     decoration: BoxDecoration(
                       gradient: AppColors.primaryGradient,
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
                           color: AppColors.primaryGreen.withValues(alpha: 0.45),
-                          blurRadius: 10,
-                          offset: const Offset(0, 3),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
                         ),
                       ],
                     ),
-                    child: const Icon(LucideIcons.chevronRight, color: Colors.white, size: 18),
+                    child: const Icon(LucideIcons.chevronRight, color: Colors.white, size: 20),
                   ),
                 ],
               ),
@@ -768,16 +733,16 @@ class _HomePharmacienScreenState extends State<HomePharmacienScreen> {
       onTap: onTap,
       borderRadius: BorderRadius.circular(24),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 15),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(26),
           border: Border.all(color: const Color(0xFFE8EEF5), width: 1.2),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF1E3820).withValues(alpha: 0.06),
-              blurRadius: 20,
-              offset: const Offset(0, 7),
+              color: const Color(0xFF1E3820).withValues(alpha: 0.07),
+              blurRadius: 22,
+              offset: const Offset(0, 8),
             ),
           ],
         ),
@@ -794,43 +759,43 @@ class _HomePharmacienScreenState extends State<HomePharmacienScreen> {
                     children: [
                       // Soft background halo
                       Container(
-                        width: 58,
-                        height: 58,
+                        width: 74,
+                        height: 74,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: const Color(0xFF71A246).withValues(alpha: 0.12),
+                          color: const Color(0xFF71A246).withValues(alpha: 0.14),
                         ),
                       ),
                       // Main Squircle with gloss border & 3D gradient
                       Container(
-                        width: 54,
-                        height: 54,
+                        width: 68,
+                        height: 68,
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
                             colors: [Color(0xFF7CB84E), Color(0xFF5A8736)],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
-                          borderRadius: BorderRadius.circular(18),
+                          borderRadius: BorderRadius.circular(22),
                           border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.35),
-                            width: 1.2,
+                            color: Colors.white.withValues(alpha: 0.40),
+                            width: 1.4,
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF71A246).withValues(alpha: 0.40),
-                              blurRadius: 14,
-                              offset: const Offset(0, 6),
+                              color: const Color(0xFF71A246).withValues(alpha: 0.42),
+                              blurRadius: 16,
+                              offset: const Offset(0, 7),
                             ),
                             BoxShadow(
-                              color: const Color(0xFF163820).withValues(alpha: 0.15),
-                              blurRadius: 4,
+                              color: const Color(0xFF163820).withValues(alpha: 0.16),
+                              blurRadius: 5,
                               offset: const Offset(0, 2),
                             ),
                           ],
                         ),
                         child: ClipRRect(
-                          borderRadius: BorderRadius.circular(17),
+                          borderRadius: BorderRadius.circular(21),
                           child: Stack(
                             alignment: Alignment.center,
                             children: [
@@ -839,12 +804,12 @@ class _HomePharmacienScreenState extends State<HomePharmacienScreen> {
                                 top: -10,
                                 left: -10,
                                 right: -10,
-                                height: 34,
+                                height: 42,
                                 child: Container(
                                   decoration: BoxDecoration(
                                     gradient: LinearGradient(
                                       colors: [
-                                        Colors.white.withValues(alpha: 0.32),
+                                        Colors.white.withValues(alpha: 0.35),
                                         Colors.white.withValues(alpha: 0.0),
                                       ],
                                       begin: Alignment.topCenter,
@@ -856,17 +821,17 @@ class _HomePharmacienScreenState extends State<HomePharmacienScreen> {
                               // Content: Asset or Icon with micro-shadow
                               useAssetImage
                                   ? Padding(
-                                      padding: const EdgeInsets.all(9),
+                                      padding: const EdgeInsets.all(10),
                                       child: Image.asset(
                                         'assets/images/icone-40.png',
                                         fit: BoxFit.contain,
-                                        errorBuilder: (ctx, err, stack) => const Icon(LucideIcons.mapPin, color: Colors.white, size: 26),
+                                        errorBuilder: (ctx, err, stack) => const Icon(LucideIcons.mapPin, color: Colors.white, size: 36),
                                       ),
                                     )
                                   : Icon(
                                       icon,
                                       color: Colors.white,
-                                      size: 26,
+                                      size: 36,
                                       shadows: [
                                         Shadow(
                                           color: Colors.black.withValues(alpha: 0.22),
@@ -881,17 +846,17 @@ class _HomePharmacienScreenState extends State<HomePharmacienScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 11),
                   Text(
                     label,
                     textAlign: TextAlign.center,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: 12.5,
+                      fontSize: 13.8,
                       fontWeight: FontWeight.w700,
                       color: Color(0xFF1E293B),
-                      height: 1.2,
+                      height: 1.22,
                       letterSpacing: -0.2,
                     ),
                   ),
@@ -956,7 +921,7 @@ class _HomePharmacienScreenState extends State<HomePharmacienScreen> {
       borderRadius: BorderRadius.circular(22),
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(22),
@@ -972,11 +937,11 @@ class _HomePharmacienScreenState extends State<HomePharmacienScreen> {
         child: Row(
           children: [
             Container(
-              width: 44,
-              height: 44,
+              width: 48,
+              height: 48,
               decoration: BoxDecoration(
                 gradient: AppColors.primaryGradient,
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
                     color: AppColors.primaryGreen.withValues(alpha: 0.30),
@@ -985,9 +950,9 @@ class _HomePharmacienScreenState extends State<HomePharmacienScreen> {
                   ),
                 ],
               ),
-              child: const Icon(LucideIcons.bot, color: Colors.white, size: 22),
+              child: const Icon(LucideIcons.bot, color: Colors.white, size: 25),
             ),
-            const SizedBox(width: 13),
+            const SizedBox(width: 14),
             const Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -995,17 +960,17 @@ class _HomePharmacienScreenState extends State<HomePharmacienScreen> {
                   Text(
                     'Ibn Jezzar — Assistant IA',
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: 15,
                       fontWeight: FontWeight.w900,
                       color: AppColors.forestGreen,
                       letterSpacing: -0.2,
                     ),
                   ),
-                  SizedBox(height: 2),
+                  SizedBox(height: 3),
                   Text(
                     'Posez vos questions sur la législation & pratiques',
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 12,
                       fontWeight: FontWeight.w500,
                       color: AppColors.textSecondary,
                     ),
@@ -1013,13 +978,15 @@ class _HomePharmacienScreenState extends State<HomePharmacienScreen> {
                 ],
               ),
             ),
+            const SizedBox(width: 8),
             Container(
-              padding: const EdgeInsets.all(6),
+              width: 32,
+              height: 32,
               decoration: BoxDecoration(
                 color: AppColors.primaryGreen.withValues(alpha: 0.12),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(LucideIcons.arrowRight, color: AppColors.primaryGreen, size: 16),
+              child: const Icon(LucideIcons.chevronRight, color: AppColors.primaryGreen, size: 18),
             ),
           ],
         ),

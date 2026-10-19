@@ -25,11 +25,15 @@ class GardeProvider extends ChangeNotifier {
 
   // Calculate distance between coordinates
   double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
-    const p = 0.017453292519943295; // Math.PI / 180
-    final a = 0.5 -
-        cos((lat2 - lat1) * p) / 2 +
-        cos(lat1 * p) * cos(lat2 * p) * (1 - cos((lon2 - lon1) * p)) / 2;
-    return 12742 * asin(sqrt(a)); // 2 * R; R = 6371 km
+    try {
+      return Geolocator.distanceBetween(lat1, lon1, lat2, lon2) / 1000.0;
+    } catch (_) {
+      const p = 0.017453292519943295; // Math.PI / 180
+      final a = 0.5 -
+          cos((lat2 - lat1) * p) / 2 +
+          cos(lat1 * p) * cos(lat2 * p) * (1 - cos((lon2 - lon1) * p)) / 2;
+      return 12742 * asin(sqrt(a > 0 ? a : 0)); // 2 * R; R = 6371 km
+    }
   }
 
   // Fetch Duty Pharmacies (Gardes) with fast caching
@@ -275,7 +279,12 @@ class GardeProvider extends ChangeNotifier {
 
       // Search query check
       if (hasSearch) {
-        if (i < _searchIndices.length && !_searchIndices[i].contains(_searchQuery)) continue;
+        final name = (g.nomPharmacie ?? '').toLowerCase();
+        final addr = (g.adresse ?? '').toLowerCase();
+        final tel = (g.tel ?? '').toLowerCase();
+        if (!name.contains(_searchQuery) && !addr.contains(_searchQuery) && !tel.contains(_searchQuery)) {
+          continue;
+        }
       }
 
       results.add(g);

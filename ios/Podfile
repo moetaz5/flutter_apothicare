@@ -1,0 +1,71 @@
+# Set platform to 15.0 matching project.pbxproj and modern Firebase / GoogleMaps
+platform :ios, '15.0'
+
+# CocoaPods analytics sends network stats synchronously affecting flutter build latency.
+ENV['COCOAPODS_DISABLE_STATS'] = 'true'
+
+project 'Runner', {
+  'Debug' => :debug,
+  'Profile' => :release,
+  'Release' => :release,
+}
+
+def flutter_root
+  generated_xcode_build_settings_path = File.expand_path(File.join('..', 'Flutter', 'Generated.xcconfig'), __FILE__)
+  if File.exist?(generated_xcode_build_settings_path)
+    File.foreach(generated_xcode_build_settings_path) do |line|
+      matches = line.match(/FLUTTER_ROOT\=(.*)/)
+      if matches && File.directory?(matches[1].strip)
+        return matches[1].strip
+      end
+    end
+  end
+
+  if ENV['FLUTTER_ROOT'] && File.directory?(ENV['FLUTTER_ROOT'])
+    return ENV['FLUTTER_ROOT']
+  end
+
+  flutter_bin = `which flutter 2>/dev/null`.strip
+  if !flutter_bin.empty? && File.exist?(flutter_bin)
+    candidate = File.expand_path(File.join(File.dirname(flutter_bin), '..'))
+    return candidate if File.directory?(candidate)
+  end
+
+  candidate_paths = [
+    File.expand_path('~/Downloads/flutter'),
+    File.expand_path('~/flutter'),
+    File.expand_path('~/development/flutter'),
+    '/opt/homebrew/Caskroom/flutter',
+    '/usr/local/Caskroom/flutter'
+  ]
+  candidate_paths.each do |path|
+    return path if File.directory?(path)
+  end
+
+  raise "FLUTTER_ROOT not found in #{generated_xcode_build_settings_path}. Try running flutter pub get or setting FLUTTER_ROOT."
+end
+
+require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), flutter_root)
+
+flutter_ios_podfile_setup
+
+target 'Runner' do
+  use_frameworks!
+  use_modular_headers!
+
+  flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
+  target 'RunnerTests' do
+    inherit! :search_paths
+  end
+end
+
+post_install do |installer|
+  installer.pods_project.targets.each do |target|
+    flutter_additional_ios_build_settings(target)
+    target.build_configurations.each do |config|
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
+      # Fix Xcode 15/16 script sandboxing build errors
+      config.build_settings['ENABLE_USER_SCRIPT_SANDBOXING'] = 'NO'
+    end
+  end
+end

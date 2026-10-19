@@ -12,6 +12,7 @@ class AppConstants {
   static const int roleAdmin = 1;
   static const int rolePharmacien = 2;
   static const int rolePatient = 3;
+  static const int roleIndustrie = 6;
   static const int roleJeunePharmacie = 7;
   static const int roleEmploye = 8;
 

@@ -85,5 +85,15 @@
 	</array>
 	<key>FirebaseAppDelegateProxyEnabled</key>
 	<true/>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>tel</string>
+		<string>https</string>
+		<string>http</string>
+		<string>comgooglemaps</string>
+		<string>waze</string>
+	</array>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Apothicare peut utiliser le micro pour la capture vidéo et audio.</string>
 </dict>
 </plist>

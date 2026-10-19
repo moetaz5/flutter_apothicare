@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -128,33 +129,39 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
 
-    return Scaffold(
-      backgroundColor: const Color(0xFF0D2818), // Deep Forest Night
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          // ─── 1. Organic Gradient Background ───
-          Container(
-            decoration: const BoxDecoration(
-              gradient: RadialGradient(
-                center: Alignment(0.0, -0.2),
-                radius: 1.1,
-                colors: [
-                  Color(0xFF1E4D2B), // Forest emerald core
-                  Color(0xFF11381E), // Mid green
-                  Color(0xFF091F12), // Deep dark green
-                ],
-                stops: [0.0, 0.55, 1.0],
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+      ),
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            // ─── 1. Organic Clean Gradient Background ───
+            Container(
+              decoration: const BoxDecoration(
+                gradient: RadialGradient(
+                  center: Alignment(0.0, -0.2),
+                  radius: 1.2,
+                  colors: [
+                    Color(0xFFF3F9EE), // Very soft, fresh organic mint tint at core
+                    Color(0xFFF9FBF7),
+                    Colors.white,
+                  ],
+                  stops: [0.0, 0.45, 1.0],
+                ),
               ),
             ),
-          ),
 
           // ─── 2. Floating Ambient Glow Orbs ───
           AnimatedBuilder(
             animation: _pulseController,
             builder: (context, _) {
               final scale = 1.0 + (_pulseController.value * 0.15);
-              final opacity = 0.25 + (_pulseController.value * 0.15);
+              final opacity = 0.12 + (_pulseController.value * 0.08);
               return Positioned(
                 top: size.height * 0.28 - (160 * scale / 2),
                 left: size.width * 0.5 - (160 * scale / 2),
@@ -179,7 +186,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
           // ─── 3. Subtle background grid / pattern dots ───
           Positioned.fill(
             child: Opacity(
-              opacity: 0.04,
+              opacity: 0.02,
               child: Image.asset(
                 'assets/images/back-mobile.png',
                 repeat: ImageRepeat.repeat,
@@ -214,7 +221,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                                   shape: BoxShape.circle,
                                   border: Border.all(
                                     color: AppColors.primaryGreen.withValues(
-                                      alpha: 0.45 * (1.0 - _pulseController.value),
+                                      alpha: 0.35 * (1.0 - _pulseController.value),
                                     ),
                                     width: 2,
                                   ),
@@ -231,19 +238,19 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                               shape: BoxShape.circle,
                               gradient: const LinearGradient(
                                 colors: [
-                                  Color(0xFF86EFAC),
-                                  Color(0xFF22C55E),
-                                  Color(0xFF15803D),
+                                  Color(0xFF88BF56),
+                                  Color(0xFF71A246),
+                                  Color(0xFF5D8A38),
                                 ],
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: AppColors.primaryGreen.withValues(alpha: 0.5),
-                                  blurRadius: 28,
-                                  spreadRadius: 4,
-                                  offset: const Offset(0, 8),
+                                  color: AppColors.primaryGreen.withValues(alpha: 0.30),
+                                  blurRadius: 20,
+                                  spreadRadius: 2,
+                                  offset: const Offset(0, 5),
                                 ),
                               ],
                             ),
@@ -253,9 +260,16 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                           Container(
                             width: 104,
                             height: 104,
-                            decoration: const BoxDecoration(
+                            decoration: BoxDecoration(
                               color: Colors.white,
                               shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.forestGreen.withValues(alpha: 0.12),
+                                  blurRadius: 16,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
                             ),
                             padding: const EdgeInsets.all(18),
                             child: Image.asset(
@@ -285,7 +299,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                             style: GoogleFonts.outfit(
                               fontSize: 28,
                               fontWeight: FontWeight.w900,
-                              color: Colors.white,
+                              color: AppColors.forestGreen,
                               letterSpacing: 4.5,
                             ),
                           ),
@@ -294,7 +308,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                             width: 8,
                             height: 8,
                             decoration: const BoxDecoration(
-                              color: Color(0xFF4ADE80), // Neon emerald dot
+                              color: AppColors.primaryGreen, // Vibrant green dot
                               shape: BoxShape.circle,
                             ),
                           ),
@@ -304,17 +318,17 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                           .fadeIn(delay: 350.ms, duration: 600.ms)
                           .slideY(begin: 0.3, end: 0, curve: Curves.easeOutCubic),
 
-                      const SizedBox(height: 8),
+                        const SizedBox(height: 10),
 
                       // Official CNOPT Pill Badge
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.08),
+                          color: AppColors.primaryGreen.withValues(alpha: 0.10),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.15),
-                            width: 1,
+                            color: AppColors.primaryGreen.withValues(alpha: 0.28),
+                            width: 1.2,
                           ),
                         ),
                         child: Text(
@@ -323,7 +337,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                           style: GoogleFonts.inter(
                             fontSize: 10,
                             fontWeight: FontWeight.w700,
-                            color: const Color(0xFFBBF7D0),
+                            color: AppColors.primaryGreenDark,
                             letterSpacing: 1.0,
                           ),
                         ),
@@ -339,8 +353,8 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                         'Santé • Géopharmacie • Gardes Officines',
                         style: GoogleFonts.inter(
                           fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.white.withValues(alpha: 0.7),
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSubtitle,
                           letterSpacing: 0.3,
                         ),
                       ).animate().fadeIn(delay: 650.ms, duration: 600.ms),
@@ -359,7 +373,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                         child: Container(
                           height: 4,
                           width: 160,
-                          color: Colors.white.withValues(alpha: 0.1),
+                          color: AppColors.primaryGreen.withValues(alpha: 0.15),
                           child: Align(
                             alignment: Alignment.centerLeft,
                             child: AnimatedContainer(
@@ -370,15 +384,15 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                                 borderRadius: BorderRadius.circular(10),
                                 gradient: const LinearGradient(
                                   colors: [
-                                    Color(0xFF4ADE80),
-                                    Color(0xFF22C55E),
-                                    Color(0xFF86EFAC),
+                                    Color(0xFF71A246),
+                                    Color(0xFF5D8A38),
+                                    Color(0xFF88BF56),
                                   ],
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: const Color(0xFF4ADE80).withValues(alpha: 0.8),
-                                    blurRadius: 8,
+                                    color: AppColors.primaryGreen.withValues(alpha: 0.35),
+                                    blurRadius: 6,
                                     spreadRadius: 1,
                                   ),
                                 ],
@@ -394,8 +408,8 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                         'Chargement des services…',
                         style: GoogleFonts.inter(
                           fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.white.withValues(alpha: 0.55),
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSubtitle.withValues(alpha: 0.85),
                         ),
                       ),
                     ],
@@ -406,6 +420,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 }

@@ -119,7 +119,7 @@ class _SignInScreenState extends State<SignInScreen> {
 
     // Responsive sizing helpers
     final isSmallScreen = screenHeight < 760;
-    final topLogoSize = isSmallScreen ? 48.0 : 56.0;
+    final topLogoSize = isSmallScreen ? 54.0 : 68.0;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7FAF4),
@@ -182,10 +182,10 @@ class _SignInScreenState extends State<SignInScreen> {
                         // ─── TOP HEADER SECTION (Aware of Notch / Dynamic Island) ───
                         Padding(
                           padding: EdgeInsets.only(
-                            top: topPadding + (isSmallScreen ? 6 : 12),
+                            top: topPadding + (isSmallScreen ? 6 : 10),
                             left: 20,
                             right: 20,
-                            bottom: isSmallScreen ? 12 : 16,
+                            bottom: isSmallScreen ? 10 : 14,
                           ),
                           child: Column(
                             children: [
@@ -195,7 +195,7 @@ class _SignInScreenState extends State<SignInScreen> {
                                 height: topLogoSize,
                                 decoration: BoxDecoration(
                                   color: Colors.white,
-                                  borderRadius: BorderRadius.circular(16),
+                                  borderRadius: BorderRadius.circular(isSmallScreen ? 16 : 18),
                                   border: Border.all(color: Colors.white, width: 2),
                                   boxShadow: [
                                     BoxShadow(
@@ -208,8 +208,8 @@ class _SignInScreenState extends State<SignInScreen> {
                                 child: Center(
                                   child: Image.asset(
                                     'assets/images/logo1.png',
-                                    width: topLogoSize * 0.70,
-                                    height: topLogoSize * 0.70,
+                                    width: topLogoSize * 0.78,
+                                    height: topLogoSize * 0.78,
                                     fit: BoxFit.contain,
                                   ),
                                 ),
