@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../core/services/app_update_service.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/providers/auth_provider.dart';
+import '../../../core/providers/messagerie_provider.dart';
 import '../../../core/routes/app_routes.dart';
 import '../../../shared/widgets/app_bottom_nav_bar.dart';
 import '../../../shared/widgets/rotating_glowing_avatar.dart';
@@ -30,8 +31,14 @@ class _HomePatientScreenState extends State<HomePatientScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<AuthProvider>().fetchUnreadNotifications();
+      final auth = context.read<AuthProvider>();
+      auth.fetchUnreadNotifications();
       AppUpdateService.checkForUpdate(context);
+      
+      final currentUserId = auth.currentUser?.id;
+      if (currentUserId != null) {
+        context.read<MessagerieProvider>().startGlobalPolling(currentUserId);
+      }
     });
   }
 

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import '../network/api_client.dart';
@@ -148,6 +149,34 @@ class MessagerieProvider extends ChangeNotifier {
   bool _isSending = false;
   String? _errorMessage;
   bool _hasInitialUnreadFetch = false;
+  Timer? _globalPollingTimer;
+  int? _globalCurrentUserId;
+
+  void startGlobalPolling(int userId) {
+    if (_globalCurrentUserId == userId && _globalPollingTimer != null && _globalPollingTimer!.isActive) {
+      return;
+    }
+    _globalCurrentUserId = userId;
+    _globalPollingTimer?.cancel();
+    fetchUnreadCounts(idReceiver: userId);
+    _globalPollingTimer = Timer.periodic(const Duration(seconds: 4), (_) {
+      if (_globalCurrentUserId != null) {
+        fetchUnreadCounts(idReceiver: _globalCurrentUserId!);
+      }
+    });
+  }
+
+  void stopGlobalPolling() {
+    _globalPollingTimer?.cancel();
+    _globalPollingTimer = null;
+    _globalCurrentUserId = null;
+  }
+
+  @override
+  void dispose() {
+    stopGlobalPolling();
+    super.dispose();
+  }
 
   List<MessagerieUser> get users => _users;
   Map<int, int> get unreadCounts => _unreadCounts;
