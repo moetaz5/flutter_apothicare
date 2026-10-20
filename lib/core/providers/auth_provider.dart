@@ -601,11 +601,12 @@ class AuthProvider extends ChangeNotifier {
               for (final f in files) {
                 final fn = f['filename']?.toString();
                 if (fn != null && fn.isNotEmpty) {
-                  if (type == 'Image de la façade' || type == 'Façade pharmacie') {
+                  final typeLower = type.toLowerCase();
+                  if (typeLower.contains('façade') || typeLower.contains('facade')) {
                     result['facade']!.add(fn);
-                  } else if (type == 'produit para' || type == 'Coin para') {
+                  } else if (typeLower.contains('para')) {
                     result['para']!.add(fn);
-                  } else if (type == 'injection' || type == 'Salle d’injection') {
+                  } else if (typeLower.contains('injection')) {
                     result['injection']!.add(fn);
                   }
                 }
@@ -616,6 +617,47 @@ class AuthProvider extends ChangeNotifier {
       }
     } catch (_) {}
     return result;
+  }
+
+  // Upload User Image (Facade, Para, Injection)
+  Future<bool> uploadUserImage({
+    required String filePath,
+    required String type,
+    String? titre,
+    String? description,
+    int? serviceId,
+  }) async {
+    final userId = _currentUser?.id;
+    if (userId == null) return false;
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final fileName = filePath.split('/').last.split(r'\').last;
+      final formData = FormData.fromMap({
+        'id': 0,
+        'id_user': userId,
+        'type': type,
+        'titre': titre ?? type,
+        'description': description ?? 'Ajoutée depuis le profil mobile',
+        if (serviceId != null) 'serviceId': serviceId,
+        'images': await MultipartFile.fromFile(filePath, filename: fileName),
+      });
+
+      final response = await _api.post('image/addImage', data: formData);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        await fetchUserImages(userId);
+        _isLoading = false;
+        notifyListeners();
+        return true;
+      }
+    } catch (e) {
+      debugPrint('uploadUserImage error: $e');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+    return false;
   }
 
   // Update Full Pharmacien Profile
