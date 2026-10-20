@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import '../network/api_client.dart';
 import '../storage/storage_service.dart';
@@ -10,7 +11,7 @@ class CongeItem {
   final String? description;
   final int? typeConge;
   final String? numCnopt;
-  final int status; // 0: En attente, 1: Accepté, 2: Refusé
+  final int status; // 0: En attente, 1: Validé, 2: Refusé
   final String? image;
   final DateTime? createdAt;
 
@@ -52,22 +53,18 @@ class CongeItem {
   String get typeLabel {
     switch (typeConge) {
       case 1:
-        return 'Congé Annuel';
+        return 'Fermeture';
       case 2:
-        return 'Congé Maladie';
-      case 3:
-        return 'Congé Maternité';
-      case 4:
-        return 'Congé Sans Solde';
+        return 'Remplacement';
       default:
-        return 'Congé Payé';
+        return 'Fermeture';
     }
   }
 
   String get statusLabel {
     switch (status) {
       case 1:
-        return 'Accepté';
+        return 'Validé';
       case 2:
         return 'Refusé';
       default:
@@ -179,6 +176,24 @@ class CongeProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
+  Future<String?> uploadCongeImage(String filePath) async {
+    try {
+      final fileName = filePath.split('/').last.split(r'\').last;
+      final formData = FormData.fromMap({
+        'image': await MultipartFile.fromFile(filePath, filename: fileName),
+      });
+      final response = await _api.post('conge/saveImage', data: formData);
+      if (response.data is Map) {
+        return response.data['filename']?.toString() ?? response.data['image']?.toString();
+      } else if (response.data is String) {
+        return response.data;
+      }
+    } catch (e) {
+      debugPrint('uploadCongeImage error: $e');
+    }
+    return null;
+  }
+
   Future<bool> addConge({
     required String dateDebut,
     required String dateFin,
@@ -193,13 +208,14 @@ class CongeProvider extends ChangeNotifier {
     try {
       final userId = StorageService.getUser()?.id;
       final payload = {
+        'id': 0,
         'id_user': userId,
         'date_debut': dateDebut,
         'date_fin': dateFin,
         'description': description,
-        'type_conge': typeConge,
-        if (numCnopt != null && numCnopt.isNotEmpty) 'num_cnopt': numCnopt,
-        if (image != null) 'image': image,
+        'type_conge': typeConge.toString(),
+        'num_cnopt': typeConge == 2 && numCnopt != null && numCnopt.isNotEmpty ? numCnopt : null,
+        if (image != null && image.isNotEmpty) 'image': image,
       };
 
       final response = await _api.post('conge/addConge', data: payload);
@@ -209,6 +225,45 @@ class CongeProvider extends ChangeNotifier {
       }
     } catch (e) {
       debugPrint('Error addConge: $e');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+    return false;
+  }
+
+  Future<bool> updateConge({
+    required int id,
+    required String dateDebut,
+    required String dateFin,
+    required String description,
+    required int typeConge,
+    String? numCnopt,
+    String? image,
+  }) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final userId = StorageService.getUser()?.id;
+      final payload = {
+        'id': id,
+        'id_user': userId,
+        'date_debut': dateDebut,
+        'date_fin': dateFin,
+        'description': description,
+        'type_conge': typeConge.toString(),
+        'num_cnopt': typeConge == 2 && numCnopt != null && numCnopt.isNotEmpty ? numCnopt : null,
+        if (image != null && image.isNotEmpty) 'image': image,
+      };
+
+      final response = await _api.put('conge/updateConge/$id', data: payload);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        await fetchConges(forceRefresh: true);
+        return true;
+      }
+    } catch (e) {
+      debugPrint('Error updateConge: $e');
     } finally {
       _isLoading = false;
       notifyListeners();

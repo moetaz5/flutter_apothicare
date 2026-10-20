@@ -288,6 +288,7 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
         maxLng: visibleRegion.northeast.longitude,
         centerLat: _currentCameraCenter.latitude,
         centerLng: _currentCameraCenter.longitude,
+        limit: 20,
       );
 
       _buildMarkers(provider.gardes, isProximityOnly: false);
@@ -300,7 +301,7 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
       }
     } catch (_) {
       _lastSearchedCenter = _currentCameraCenter;
-      provider.searchInArea(_currentCameraCenter.latitude, _currentCameraCenter.longitude, limit: null);
+      provider.searchInArea(_currentCameraCenter.latitude, _currentCameraCenter.longitude, limit: 20);
       _buildMarkers(provider.gardes, isProximityOnly: false);
 
       if (mounted) {
@@ -376,8 +377,6 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
     final provider = context.read<GardeProvider>();
     final bool hasServiceFilter = _filterInjection || _filterVeterinaire;
 
-    // When service filter (Injection or Produit vét.) is active, search across ALL pharmacies
-    // without limiting to the 20 closest proximity or the current camera zone!
     final List<GardeModel> sourceList = hasServiceFilter ? provider.allGardes : pharmacies;
 
     final List<GardeModel> activeFiltered = sourceList.where((ph) {
@@ -386,21 +385,34 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
       return true;
     }).toList();
 
+    // Sort by proximity to user GPS location or camera center so the 20 closest matching are displayed
+    final refLat = _currentUserGpsLocation?.latitude ?? _currentCameraCenter.latitude;
+    final refLng = _currentUserGpsLocation?.longitude ?? _currentCameraCenter.longitude;
+    activeFiltered.sort((a, b) {
+      final distA = (a.lat != null && a.lng != null && a.lat != 0)
+          ? _calculateDistanceKm(refLat, refLng, a.lat!, a.lng!)
+          : 99999.0;
+      final distB = (b.lat != null && b.lng != null && b.lat != 0)
+          ? _calculateDistanceKm(refLat, refLng, b.lat!, b.lng!)
+          : 99999.0;
+      return distA.compareTo(distB);
+    });
+
     if (_selectedPharmacy != null) {
       final stillVisible = activeFiltered.any((p) => p.id == _selectedPharmacy!.id);
       if (!stillVisible) {
         _selectedPharmacy = null;
+      } else if (_selectedPharmacy!.lat != null && _selectedPharmacy!.lng != null) {
+        final selectedIndex = activeFiltered.indexWhere((p) => p.id == _selectedPharmacy!.id);
+        if (selectedIndex >= _maxVisibleMarkers) {
+          activeFiltered.removeAt(selectedIndex);
+          activeFiltered.insert(0, _selectedPharmacy!);
+        }
       }
     }
 
-    // ─── NORMAL / AREA DISPLAY ───
-    // Initial proximity mode shows the 20 closest pharmacies.
-    // Area Search mode ("Rechercher dans cette zone") shows ALL pharmacies visible in the bounds.
-    // When service filter is active, show ALL matching pharmacies (do not limit to 20).
-    final bool shouldLimitTo20 = (!hasServiceFilter) && (isProximityOnly ?? (!_isAreaSearchActive));
-    final int limit = shouldLimitTo20
-        ? (activeFiltered.length > _maxVisibleMarkers ? _maxVisibleMarkers : activeFiltered.length)
-        : activeFiltered.length;
+    // ─── STRICT MAXIMUM 20 PHARMACIES IN ALL CASES ───
+    final int limit = activeFiltered.length > _maxVisibleMarkers ? _maxVisibleMarkers : activeFiltered.length;
 
     for (int i = 0; i < limit; i++) {
       final ph = activeFiltered[i];
@@ -444,12 +456,17 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
   int _getFilteredCount(GardeProvider provider) {
     final bool hasServiceFilter = _filterInjection || _filterVeterinaire;
     final list = hasServiceFilter ? provider.allGardes : provider.gardes;
-    if (!hasServiceFilter) return list.length;
-    return list.where((ph) {
-      if (_filterInjection && !ph.hasInjection) return false;
-      if (_filterVeterinaire && !ph.hasVeterinaire) return false;
-      return true;
-    }).length;
+    int count;
+    if (!hasServiceFilter) {
+      count = list.length;
+    } else {
+      count = list.where((ph) {
+        if (_filterInjection && !ph.hasInjection) return false;
+        if (_filterVeterinaire && !ph.hasVeterinaire) return false;
+        return true;
+      }).length;
+    }
+    return count > _maxVisibleMarkers ? _maxVisibleMarkers : count;
   }
 
   Future<void> _animateToLocation(double lat, double lng, {double zoom = 15.2, double tilt = 0.0, double bearing = 0.0}) async {
@@ -1090,13 +1107,25 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
                             ],
                           ),
                         )
-                      : ListView.separated(
-                          padding: EdgeInsets.fromLTRB(16, 14, 16, 14 + bottomInset),
-                          itemCount: provider.gardes.length,
-                          separatorBuilder: (ctx, i) => const SizedBox(height: 12),
-                          itemBuilder: (ctx, i) {
-                            final ph = provider.gardes[i];
-                            return _buildListPharmacyCard(ph);
+                      : Builder(
+                          builder: (context) {
+                            final hasServiceFilter = _filterInjection || _filterVeterinaire;
+                            final sourceList = hasServiceFilter ? provider.allGardes : provider.gardes;
+                            final listFiltered = sourceList.where((ph) {
+                              if (_filterInjection && !ph.hasInjection) return false;
+                              if (_filterVeterinaire && !ph.hasVeterinaire) return false;
+                              return true;
+                            }).take(_maxVisibleMarkers).toList();
+
+                            return ListView.separated(
+                              padding: EdgeInsets.fromLTRB(16, 14, 16, 14 + bottomInset),
+                              itemCount: listFiltered.length,
+                              separatorBuilder: (ctx, i) => const SizedBox(height: 12),
+                              itemBuilder: (ctx, i) {
+                                final ph = listFiltered[i];
+                                return _buildListPharmacyCard(ph);
+                              },
+                            );
                           },
                         ),
             ),

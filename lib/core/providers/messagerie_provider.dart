@@ -296,8 +296,21 @@ class MessagerieProvider extends ChangeNotifier {
           });
         }
         _hasInitialUnreadFetch = true;
-        _unreadCounts = map;
-        notifyListeners();
+
+        // Only notify if unread counts actually changed to prevent UI flicker
+        bool countsChanged = map.length != _unreadCounts.length;
+        if (!countsChanged) {
+          for (final entry in map.entries) {
+            if (_unreadCounts[entry.key] != entry.value) {
+              countsChanged = true;
+              break;
+            }
+          }
+        }
+        if (countsChanged) {
+          _unreadCounts = map;
+          notifyListeners();
+        }
       }
     } catch (e) {
       debugPrint('Error in fetchUnreadCounts: $e');
@@ -336,22 +349,46 @@ class MessagerieProvider extends ChangeNotifier {
         }
       }
 
+      bool hasChanges = false;
       if (rawList != null) {
-        _currentMessages = rawList
+        final newMessages = rawList
             .whereType<Map>()
             .map((m) => ChatMessage.fromMap(m))
             .toList();
+        newMessages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+
+        hasChanges = newMessages.length != _currentMessages.length;
+        if (!hasChanges) {
+          for (int i = 0; i < newMessages.length; i++) {
+            final oldM = _currentMessages[i];
+            final newM = newMessages[i];
+            if (oldM.id != newM.id || oldM.lu != newM.lu || oldM.content != newM.content) {
+              hasChanges = true;
+              break;
+            }
+          }
+        }
+
+        if (hasChanges || !silent) {
+          _currentMessages = newMessages;
+        }
       }
 
-      // Mark as read
+      // Mark as read without double notifying
       markAsRead(idSender: idReceiver, idReceiver: idSender);
 
-      _isLoadingMessages = false;
-      notifyListeners();
+      if (_isLoadingMessages) {
+        _isLoadingMessages = false;
+        notifyListeners();
+      } else if (hasChanges || !silent) {
+        notifyListeners();
+      }
     } catch (e) {
       debugPrint('Error in fetchMessages: $e');
-      _isLoadingMessages = false;
-      notifyListeners();
+      if (_isLoadingMessages) {
+        _isLoadingMessages = false;
+        notifyListeners();
+      }
     }
   }
 
@@ -433,8 +470,11 @@ class MessagerieProvider extends ChangeNotifier {
 
   Future<void> markAsRead({required int idSender, required int idReceiver}) async {
     try {
-      _unreadCounts.remove(idSender);
-      notifyListeners();
+      final hadUnread = (_unreadCounts[idSender] ?? 0) > 0;
+      if (hadUnread) {
+        _unreadCounts.remove(idSender);
+        notifyListeners();
+      }
       await _api.post('message/markAsRead', data: {
         'id_sender': idSender,
         'id_receiver': idReceiver,

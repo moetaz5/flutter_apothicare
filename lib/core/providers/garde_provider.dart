@@ -171,7 +171,7 @@ class GardeProvider extends ChangeNotifier {
     _applyFilters(notify: true, limit: limit);
   }
 
-  void searchInArea(double centerLat, double centerLng, {int? limit}) {
+  void searchInArea(double centerLat, double centerLng, {int limit = 20}) {
     if (_allGardes.isEmpty) return;
 
     _allGardes = _allGardes.map((garde) {
@@ -193,6 +193,7 @@ class GardeProvider extends ChangeNotifier {
     required double maxLng,
     double? centerLat,
     double? centerLng,
+    int limit = 20,
   }) {
     if (_allGardes.isEmpty) return;
 
@@ -237,7 +238,7 @@ class GardeProvider extends ChangeNotifier {
 
     inBounds.sort((a, b) => (a.distanceInKm ?? 99999).compareTo(b.distanceInKm ?? 99999));
 
-    _filteredGardes = inBounds;
+    _filteredGardes = inBounds.take(limit).toList();
     notifyListeners();
   }
 
@@ -245,16 +246,16 @@ class GardeProvider extends ChangeNotifier {
     final clean = query.trim().toLowerCase();
     if (_searchQuery == clean) return;
     _searchQuery = clean;
-    _applyFilters(notify: true);
+    _applyFilters(notify: true, limit: 20);
   }
 
   void setFilterType(String type) {
     if (_filterType == type) return;
     _filterType = type;
-    _applyFilters(notify: true);
+    _applyFilters(notify: true, limit: 20);
   }
 
-  void _applyFilters({bool notify = true, int? limit}) {
+  void _applyFilters({bool notify = true, int limit = 20}) {
     if (_allGardes.isEmpty) {
       _filteredGardes = [];
       if (notify) notifyListeners();
@@ -288,7 +289,7 @@ class GardeProvider extends ChangeNotifier {
       }
 
       results.add(g);
-      if (limit != null && results.length >= limit) break;
+      if (results.length >= limit) break;
     }
 
     _filteredGardes = results;

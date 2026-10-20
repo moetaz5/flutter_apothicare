@@ -4,7 +4,6 @@ import 'dart:typed_data';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -75,7 +74,7 @@ class _MessagerieScreenState extends State<MessagerieScreen> {
     _refreshCurrentChatOrUnread();
   }
 
-  void _refreshCurrentChatOrUnread() {
+  void _refreshCurrentChatOrUnread() async {
     if (!mounted) return;
     final auth = context.read<AuthProvider>();
     final currentId = auth.currentUser?.id;
@@ -83,13 +82,27 @@ class _MessagerieScreenState extends State<MessagerieScreen> {
 
     final messagerie = context.read<MessagerieProvider>();
     if (_activeChatUser != null) {
-      messagerie.fetchMessages(
+      final prevCount = messagerie.currentMessages.length;
+      await messagerie.fetchMessages(
         idSender: currentId,
         idReceiver: _activeChatUser!.id,
         silent: true,
       );
+      if (mounted && messagerie.currentMessages.length > prevCount) {
+        _scrollToBottomIfNearBottom();
+      }
     } else {
       messagerie.fetchUnreadCounts(idReceiver: currentId);
+    }
+  }
+
+  void _scrollToBottomIfNearBottom() {
+    if (!mounted || !_chatScrollController.hasClients) return;
+    final maxScroll = _chatScrollController.position.maxScrollExtent;
+    if (maxScroll <= 0) return;
+    final currentScroll = _chatScrollController.position.pixels;
+    if (maxScroll - currentScroll < 200) {
+      _scrollToBottom(jump: false);
     }
   }
 
@@ -115,7 +128,7 @@ class _MessagerieScreenState extends State<MessagerieScreen> {
     }
   }
 
-  void _openChat(MessagerieUser user) {
+  void _openChat(MessagerieUser user) async {
     // Add to history and move to top
     setState(() {
       _activeChatUser = user;
@@ -127,12 +140,15 @@ class _MessagerieScreenState extends State<MessagerieScreen> {
     final auth = context.read<AuthProvider>();
     final currentUser = auth.currentUser;
     if (currentUser?.id != null) {
-      context.read<MessagerieProvider>().fetchMessages(
+      context.read<MessagerieProvider>().clearCurrentChat();
+      await context.read<MessagerieProvider>().fetchMessages(
             idSender: currentUser!.id!,
             idReceiver: user.id,
           );
+      if (mounted) {
+        _scrollToBottom(jump: true);
+      }
     }
-    _scrollToBottom();
   }
 
   void _closeChat() {
@@ -140,13 +156,22 @@ class _MessagerieScreenState extends State<MessagerieScreen> {
     context.read<MessagerieProvider>().clearCurrentChat();
   }
 
-  void _scrollToBottom() {
+  void _scrollToBottom({bool jump = false}) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_chatScrollController.hasClients) {
+      if (!mounted || !_chatScrollController.hasClients) return;
+      final maxScroll = _chatScrollController.position.maxScrollExtent;
+      if (maxScroll <= 0) return;
+
+      final current = _chatScrollController.position.pixels;
+      if ((maxScroll - current).abs() < 5) return;
+
+      if (jump) {
+        _chatScrollController.jumpTo(maxScroll);
+      } else {
         _chatScrollController.animateTo(
-          _chatScrollController.position.maxScrollExtent + 80,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
+          maxScroll,
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOutQuad,
         );
       }
     });
@@ -344,6 +369,8 @@ class _MessagerieScreenState extends State<MessagerieScreen> {
     });
     StorageService.saveConversationHistoryIds(_historyIds);
 
+    _scrollToBottom(jump: false);
+
     final ok = await context.read<MessagerieProvider>().sendMessage(
           idSender: currentUser!.id!,
           idReceiver: targetUser.id,
@@ -354,7 +381,7 @@ class _MessagerieScreenState extends State<MessagerieScreen> {
         );
 
     if (ok) {
-      _scrollToBottom();
+      _scrollToBottom(jump: false);
     }
   }
 
@@ -1571,10 +1598,7 @@ class _MessagerieScreenState extends State<MessagerieScreen> {
                               ],
                             ),
                           ),
-                        )
-                            .animate()
-                            .fadeIn(duration: 250.ms, delay: (i * 25).ms)
-                            .slideY(begin: 0.04, end: 0);
+                        );
                       },
                     ),
                 ],
@@ -1592,8 +1616,6 @@ class _MessagerieScreenState extends State<MessagerieScreen> {
     final user = _activeChatUser!;
     final avatarBg = _getAvatarColor(user.id, user.nom);
     final initial = user.nom.isNotEmpty ? user.nom[0].toUpperCase() : 'U';
-
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
 
     return Column(
       children: [
@@ -1683,6 +1705,7 @@ class _MessagerieScreenState extends State<MessagerieScreen> {
                       )
                     : ListView.builder(
                         controller: _chatScrollController,
+                        physics: const ClampingScrollPhysics(),
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
                         itemCount: messages.length,
                         itemBuilder: (ctx, i) {
@@ -1691,6 +1714,7 @@ class _MessagerieScreenState extends State<MessagerieScreen> {
                           final timeStr = DateFormat('HH:mm').format(msg.createdAt);
 
                           return Align(
+                            key: ValueKey(msg.id ?? '${msg.createdAt.millisecondsSinceEpoch}_$i'),
                             alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
                             child: Container(
                               margin: const EdgeInsets.symmetric(vertical: 4),
@@ -1885,6 +1909,11 @@ class _MessagerieScreenState extends State<MessagerieScreen> {
                     ),
                     child: TextField(
                       controller: _msgInputController,
+                      onTap: () {
+                        Future.delayed(const Duration(milliseconds: 300), () {
+                          if (mounted) _scrollToBottomIfNearBottom();
+                        });
+                      },
                       decoration: const InputDecoration(
                         hintText: 'Écrire un message...',
                         hintStyle: TextStyle(color: Color(0xFF94A3B8), fontSize: 13.5),
