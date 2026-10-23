@@ -379,7 +379,7 @@ class _CarteSoinScreenState extends State<CarteSoinScreen> {
                                       child: Column(
                                         children: [
                                           const Text(
-                                            'N° EVAX',
+                                            'INS',
                                             style: TextStyle(
                                               fontSize: 10.5,
                                               fontWeight: FontWeight.w700,
@@ -507,7 +507,7 @@ class _CarteSoinScreenState extends State<CarteSoinScreen> {
                         // Info rows
                         _buildInfoRow('NOM ET PRÉNOM', nomUser.isNotEmpty ? nomUser.toUpperCase() : '—'),
                         _buildInfoRow('EMAIL', emailUser.isNotEmpty ? emailUser : '—'),
-                        _buildInfoRow('NUMÉRO EVAX', evaxNum),
+                        _buildInfoRow('INS', evaxNum),
 
                         // Points row with button
                         Padding(
@@ -633,7 +633,7 @@ class _CarteSoinScreenState extends State<CarteSoinScreen> {
                                   ],
                                 ),
                                 child: QrImageView(
-                                  data: 'EVAX:$evaxNum;USER:${user?.login ?? ''}',
+                                  data: 'INS:$evaxNum;USER:${user?.login ?? ''}',
                                   version: QrVersions.auto,
                                   size: 180.0,
                                   eyeStyle: const QrEyeStyle(
@@ -648,7 +648,7 @@ class _CarteSoinScreenState extends State<CarteSoinScreen> {
                               ),
                               const SizedBox(height: 14),
                               const Text(
-                                'Scannez ce code pour connaître votre numéro Evax',
+                                'Scannez ce code pour connaître votre INS',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: 12.5,
