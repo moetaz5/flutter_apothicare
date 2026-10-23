@@ -1,7 +1,7 @@
 name: flutter_apothicare
 description: "Apothicare - Solution Mobile Santé & Géopharmacie CNOPT"
 publish_to: 'none'
-version: 1.0.0+2
+version: 2.5.0+49
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
