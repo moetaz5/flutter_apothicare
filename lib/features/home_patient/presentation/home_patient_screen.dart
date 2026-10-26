@@ -8,6 +8,7 @@ import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/messagerie_provider.dart';
 import '../../../core/routes/app_routes.dart';
 import '../../../shared/widgets/app_bottom_nav_bar.dart';
+import '../../../shared/widgets/app_logout_dialog.dart';
 import '../../../shared/widgets/rotating_glowing_avatar.dart';
 
 class HomePatientScreen extends StatefulWidget {
@@ -65,36 +66,7 @@ class _HomePatientScreenState extends State<HomePatientScreen> {
   }
 
   void _showLogoutDialog() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Déconnexion', style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.forestGreen)),
-        content: const Text('Êtes-vous sûr de vouloir vous déconnecter ?'),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Annuler', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              await context.read<AuthProvider>().logout();
-              if (mounted) {
-                Navigator.pushNamedAndRemoveUntil(context, AppRoutes.signIn, (route) => false);
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.error,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            child: const Text('Déconnexion', style: TextStyle(fontWeight: FontWeight.w700)),
-          ),
-        ],
-      ),
-    );
+    showAppLogoutDialog(context);
   }
 
   String _getGreeting() {
@@ -270,7 +242,7 @@ class _HomePatientScreenState extends State<HomePatientScreen> {
                         ),
                         _buildMenuCard(
                           icon: LucideIcons.fileText,
-                          label: 'Dossier pharmaceutique',
+                          label: 'Historique médicamenteuse',
                           delayMs: 300,
                           onTap: () => Navigator.pushNamed(context, AppRoutes.dossierPatient),
                         ),
@@ -292,13 +264,7 @@ class _HomePatientScreenState extends State<HomePatientScreen> {
                       onTap: () => Navigator.pushNamed(context, AppRoutes.qrScanner),
                     ).animate().fadeIn(delay: 400.ms, duration: 400.ms),
                   ),
-                  const SizedBox(height: 14),
-
-                  // ─── DAILY HEALTH ADVICE WIDGET ───
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: _buildDailyHealthTipCard().animate().fadeIn(delay: 450.ms, duration: 400.ms),
-                  ),
+                  const SizedBox(height: 20),
                 ],
               ),
             ),
@@ -742,56 +708,6 @@ class _HomePatientScreenState extends State<HomePatientScreen> {
     );
   }
 
-  Widget _buildDailyHealthTipCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF1F7EC),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.primaryGreen.withValues(alpha: 0.25)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(LucideIcons.sparkles, color: AppColors.primaryGreen, size: 18),
-          ),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Conseil Santé du Jour',
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.forestGreen,
-                  ),
-                ),
-                SizedBox(height: 3),
-                Text(
-                  'Respectez scrupuleusement les horaires de prise de vos médicaments indiqués sur votre ordonnance.',
-                  style: TextStyle(
-                    fontSize: 11.5,
-                    height: 1.35,
-                    color: AppColors.textSubtitle,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class _InteractivePressCard extends StatefulWidget {

@@ -832,28 +832,33 @@ class AuthProvider extends ChangeNotifier {
   Future<void> logout() async {
     _stopNotificationPolling();
 
-    // 1. Detach push notification token and cancel notifications for this user
-    try {
-      await NotificationService.onLogout(_api);
-    } catch (_) {}
-
-    // 2. Disconnect WebSocket cleanly
+    // 1. Disconnect WebSocket cleanly
     try {
       WebSocketService().disconnect();
     } catch (_) {}
 
-    // 3. Notify backend logout endpoint
-    try {
-      await _api.post('user/logout');
-    } catch (e) {
-      // Continue clearing local state anyway
-    }
-
-    // 4. Clear all local storage
-    await StorageService.clearAll();
+    // 2. Clear state and storage immediately so UI transitions with zero lag
     _currentUser = null;
     _unreadNotifications = 0;
     _unreadMessages = 0;
     notifyListeners();
+
+    final clearStorageFuture = StorageService.clearAll();
+
+    // 3. Detach push notification token and notify backend in background with timeout
+    unawaited(() async {
+      try {
+        await NotificationService.onLogout(_api).timeout(const Duration(seconds: 2));
+      } catch (e) {
+        debugPrint('[Logout Background] NotificationService.onLogout error: $e');
+      }
+      try {
+        await _api.post('user/logout').timeout(const Duration(seconds: 2));
+      } catch (e) {
+        debugPrint('[Logout Background] user/logout error: $e');
+      }
+    }());
+
+    await clearStorageFuture;
   }
 }

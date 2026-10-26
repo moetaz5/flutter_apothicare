@@ -11,6 +11,7 @@ import '../../../core/providers/messagerie_provider.dart';
 import '../../../core/routes/app_routes.dart';
 import '../../../core/utils/app_toast.dart';
 import '../../../shared/widgets/app_bottom_nav_bar.dart';
+import '../../../shared/widgets/app_logout_dialog.dart';
 import '../../../shared/widgets/rotating_glowing_avatar.dart';
 
 class HomePharmacienScreen extends StatefulWidget {
@@ -69,36 +70,7 @@ class _HomePharmacienScreenState extends State<HomePharmacienScreen> {
   }
 
   void _showLogoutDialog() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Déconnexion', style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.forestGreen)),
-        content: const Text('Êtes-vous sûr de vouloir vous déconnecter ?'),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Annuler', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              await context.read<AuthProvider>().logout();
-              if (mounted) {
-                Navigator.pushNamedAndRemoveUntil(context, AppRoutes.signIn, (route) => false);
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.error,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            child: const Text('Déconnexion', style: TextStyle(fontWeight: FontWeight.w700)),
-          ),
-        ],
-      ),
-    );
+    showAppLogoutDialog(context);
   }
 
   void _showPhotoOptionsModal() {
@@ -491,13 +463,7 @@ class _HomePharmacienScreenState extends State<HomePharmacienScreen> {
                       onTap: () => Navigator.pushNamed(context, AppRoutes.chatbot),
                     ).animate().fadeIn(delay: 500.ms, duration: 400.ms),
                   ),
-                  const SizedBox(height: 14),
-
-                  // ─── DAILY HEALTH TIP / NOTE PROFESSIONNELLE ───
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: _buildProHealthTipCard().animate().fadeIn(delay: 550.ms, duration: 400.ms),
-                  ),
+                  const SizedBox(height: 20),
                 ],
               ),
             ),
@@ -996,57 +962,6 @@ class _HomePharmacienScreenState extends State<HomePharmacienScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildProHealthTipCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF1F7EC),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.primaryGreen.withValues(alpha: 0.25)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(LucideIcons.sparkles, color: AppColors.primaryGreen, size: 18),
-          ),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Conseil & Vigilance Officinale',
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.forestGreen,
-                  ),
-                ),
-                SizedBox(height: 3),
-                Text(
-                  'Vérifiez la conformité des ordonnances et signalez tout événement indésirable sur le portail CNOPT.',
-                  style: TextStyle(
-                    fontSize: 11.5,
-                    height: 1.35,
-                    color: AppColors.textSubtitle,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }

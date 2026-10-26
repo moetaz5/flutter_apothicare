@@ -217,7 +217,7 @@ class _DossierPatientScreenState extends State<DossierPatientScreen> {
 
                         // Title & Subtitle
                         const Text(
-                          'Dossier pharmaceutique',
+                          'Historique médicamenteuse',
                           style: TextStyle(
                             fontSize: 21,
                             fontWeight: FontWeight.w800,

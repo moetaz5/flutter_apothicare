@@ -125,102 +125,143 @@ class _SignUpScreenState extends State<SignUpScreen> {
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
+      useSafeArea: true,
       builder: (ctx) {
         String query = '';
+        final searchController = TextEditingController();
         return StatefulBuilder(
           builder: (context, setModalState) {
+            final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+            final isKeyboardVisible = bottomInset > 0;
             final filtered = list.where((g) {
               final name = (g['nom'] ?? g['gouvernorat'] ?? '').toString().toLowerCase();
               return name.contains(query.toLowerCase());
             }).toList();
 
-            return Container(
-              height: MediaQuery.of(context).size.height * 0.65,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-              ),
-              child: Column(
-                children: [
-                  Container(
-                    width: 38,
-                    height: 4.5,
-                    decoration: BoxDecoration(
-                      color: AppColors.borderGray,
-                      borderRadius: BorderRadius.circular(3),
+            return Padding(
+              padding: EdgeInsets.only(bottom: bottomInset),
+              child: Container(
+                height: MediaQuery.of(context).size.height * (isKeyboardVisible ? 0.82 : 0.65),
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                ),
+                child: Column(
+                  children: [
+                    Container(
+                      width: 38,
+                      height: 4.5,
+                      decoration: BoxDecoration(
+                        color: AppColors.borderGray,
+                        borderRadius: BorderRadius.circular(3),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  const Row(
-                    children: [
-                      Icon(LucideIcons.mapPin, color: AppColors.primaryGreen, size: 20),
-                      SizedBox(width: 8),
-                      Text(
-                        'Sélectionner un Gouvernorat',
-                        style: TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF163820),
+                    const SizedBox(height: 14),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Row(
+                          children: [
+                            Icon(LucideIcons.mapPin, color: AppColors.primaryGreen, size: 20),
+                            SizedBox(width: 8),
+                            Text(
+                              'Sélectionner un Gouvernorat',
+                              style: TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF163820),
+                              ),
+                            ),
+                          ],
+                        ),
+                        IconButton(
+                          icon: const Icon(LucideIcons.x, size: 20, color: AppColors.textMuted),
+                          onPressed: () => Navigator.pop(ctx),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    TextField(
+                      controller: searchController,
+                      onChanged: (val) => setModalState(() => query = val),
+                      decoration: InputDecoration(
+                        hintText: 'Rechercher un gouvernorat...',
+                        prefixIcon: const Icon(LucideIcons.search, size: 18, color: AppColors.textMuted),
+                        suffixIcon: query.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(LucideIcons.x, size: 16, color: AppColors.textMuted),
+                                onPressed: () {
+                                  searchController.clear();
+                                  setModalState(() => query = '');
+                                },
+                              )
+                            : null,
+                        filled: true,
+                        fillColor: AppColors.inputBackground,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppColors.borderGray),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppColors.borderGray),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppColors.primaryGreen, width: 1.5),
                         ),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  TextField(
-                    onChanged: (val) => setModalState(() => query = val),
-                    decoration: InputDecoration(
-                      hintText: 'Rechercher un gouvernorat...',
-                      prefixIcon: const Icon(LucideIcons.search, size: 18, color: AppColors.textMuted),
-                      filled: true,
-                      fillColor: AppColors.inputBackground,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: AppColors.borderGray),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: AppColors.borderGray),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: AppColors.primaryGreen, width: 1.5),
-                      ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  Expanded(
-                    child: ListView.separated(
-                      itemCount: filtered.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1, color: AppColors.borderGray),
-                      itemBuilder: (_, index) {
-                        final g = filtered[index];
-                        final name = (g['nom'] ?? g['gouvernorat'] ?? '').toString();
-                        final isSelected = _selectedGouvernorat?['nom'] == name;
+                    const SizedBox(height: 12),
+                    Expanded(
+                      child: filtered.isEmpty
+                          ? const Center(
+                              child: Text(
+                                'Aucun gouvernorat trouvé',
+                                style: TextStyle(
+                                  color: AppColors.textMuted,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            )
+                          : ListView.separated(
+                              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                              itemCount: filtered.length,
+                              separatorBuilder: (_, __) => const Divider(height: 1, color: AppColors.borderGray),
+                              itemBuilder: (_, index) {
+                                final g = filtered[index];
+                                final name = (g['nom'] ?? g['gouvernorat'] ?? '').toString();
+                                final isSelected = _selectedGouvernorat?['nom'] == name;
 
-                        return ListTile(
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          title: Text(
-                            name,
-                            style: TextStyle(
-                              fontSize: 14.5,
-                              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
-                              color: isSelected ? AppColors.primaryGreen : AppColors.textPrimary,
+                                return ListTile(
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  title: Text(
+                                    name,
+                                    style: TextStyle(
+                                      fontSize: 14.5,
+                                      fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
+                                      color: isSelected ? AppColors.primaryGreen : AppColors.textPrimary,
+                                    ),
+                                  ),
+                                  trailing: isSelected
+                                      ? const Icon(LucideIcons.checkCircle2, color: AppColors.primaryGreen, size: 20)
+                                      : null,
+                                  onTap: () {
+                                    FocusScope.of(context).unfocus();
+                                    setState(() => _selectedGouvernorat = g);
+                                    Navigator.pop(ctx);
+                                  },
+                                );
+                              },
                             ),
-                          ),
-                          trailing: isSelected
-                              ? const Icon(LucideIcons.checkCircle2, color: AppColors.primaryGreen, size: 20)
-                              : null,
-                          onTap: () {
-                            setState(() => _selectedGouvernorat = g);
-                            Navigator.pop(ctx);
-                          },
-                        );
-                      },
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             );
           },
@@ -281,7 +322,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     _buildModalBullet('Ces données sont utilisées pour vous fournir les fonctionnalités de l\'application, notamment : consultation des pharmacies de garde, notifications et statistiques.'),
                     const SizedBox(height: 14),
                     _buildModalSectionTitle('2. Données de santé'),
-                    _buildModalBullet('Certaines données sensibles liées à la santé peuvent être traitées uniquement si elles sont nécessaires au bon fonctionnement (ex. Dossier pharmaceutique).'),
+                    _buildModalBullet('Certaines données sensibles liées à la santé peuvent être traitées uniquement si elles sont nécessaires au bon fonctionnement (ex. Historique médicamenteuse).'),
                     _buildModalBullet('Ces données sont strictement protégées et ne sont accessibles qu\'aux personnes autorisées.'),
                     const SizedBox(height: 14),
                     _buildModalSectionTitle('3. Localisation'),

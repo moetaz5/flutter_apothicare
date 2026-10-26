@@ -379,7 +379,7 @@ class _CarteSoinScreenState extends State<CarteSoinScreen> {
                                       child: Column(
                                         children: [
                                           const Text(
-                                            'INS',
+                                            'IDENTIFIANT',
                                             style: TextStyle(
                                               fontSize: 10.5,
                                               fontWeight: FontWeight.w700,
@@ -507,7 +507,7 @@ class _CarteSoinScreenState extends State<CarteSoinScreen> {
                         // Info rows
                         _buildInfoRow('NOM ET PRÉNOM', nomUser.isNotEmpty ? nomUser.toUpperCase() : '—'),
                         _buildInfoRow('EMAIL', emailUser.isNotEmpty ? emailUser : '—'),
-                        _buildInfoRow('INS', evaxNum),
+                        _buildInfoRow('IDENTIFIANT', evaxNum),
 
                         // Points row with button
                         Padding(
@@ -648,7 +648,7 @@ class _CarteSoinScreenState extends State<CarteSoinScreen> {
                               ),
                               const SizedBox(height: 14),
                               const Text(
-                                'Scannez ce code pour connaître votre INS',
+                                'Scannez ce code pour connaître votre identifiant',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: 12.5,

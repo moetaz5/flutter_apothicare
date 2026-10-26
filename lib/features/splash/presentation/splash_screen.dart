@@ -350,12 +350,12 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
                       // Tagline / Features Pill
                       Text(
-                        'Santé • Géopharmacie • Gardes Officines',
+                        'ORDRE • HONNEUR • UNION',
                         style: GoogleFonts.inter(
                           fontSize: 12,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w700,
                           color: AppColors.textSubtitle,
-                          letterSpacing: 0.3,
+                          letterSpacing: 1.0,
                         ),
                       ).animate().fadeIn(delay: 650.ms, duration: 600.ms),
                     ],

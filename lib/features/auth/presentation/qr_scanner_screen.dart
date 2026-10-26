@@ -6,6 +6,7 @@ import 'package:flutter/rendering.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/providers/auth_provider.dart';
@@ -22,15 +23,17 @@ class QrScannerScreen extends StatefulWidget {
   State<QrScannerScreen> createState() => _QrScannerScreenState();
 }
 
-class _QrScannerScreenState extends State<QrScannerScreen> {
+class _QrScannerScreenState extends State<QrScannerScreen> with WidgetsBindingObserver {
   static const Color _navy = Color(0xFF163820);
   static const Color _green = Color(0xFF71A246);
   static const Color _greenDark = Color(0xFF5D8A38);
   static const Color _bgGrey = Color(0xFFF0F4F8);
 
   final MobileScannerController _scannerController = MobileScannerController(
-    detectionSpeed: DetectionSpeed.normal,
+    autoStart: true,
+    detectionSpeed: DetectionSpeed.noDuplicates,
     facing: CameraFacing.back,
+    returnImage: true,
   );
 
   final ImagePicker _imagePicker = ImagePicker();
@@ -38,19 +41,95 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
 
   bool _isProcessing = false;
   Uint8List? _lastFrameBytes;
+  bool _hasPermission = false;
+  bool _isPermissionPermanentlyDenied = false;
+  bool _isCheckingPermission = true;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _checkAndRequestCameraPermission();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<PatientProvider>().fetchAllMedicaments();
     });
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkAndRequestCameraPermission();
+    } else if (state == AppLifecycleState.inactive || state == AppLifecycleState.paused) {
+      try {
+        _scannerController.stop();
+      } catch (_) {}
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _scannerController.dispose();
     super.dispose();
+  }
+
+  Future<void> _checkAndRequestCameraPermission() async {
+    if (!mounted) return;
+    setState(() {
+      _isCheckingPermission = true;
+    });
+
+    try {
+      var status = await Permission.camera.status;
+      if (!status.isGranted && !status.isPermanentlyDenied) {
+        status = await Permission.camera.request();
+      }
+
+      if (!mounted) return;
+      if (status.isGranted) {
+        setState(() {
+          _hasPermission = true;
+          _isPermissionPermanentlyDenied = false;
+          _isCheckingPermission = false;
+        });
+        await _restartCamera();
+      } else if (status.isPermanentlyDenied) {
+        setState(() {
+          _hasPermission = false;
+          _isPermissionPermanentlyDenied = true;
+          _isCheckingPermission = false;
+        });
+      } else {
+        setState(() {
+          _hasPermission = false;
+          _isPermissionPermanentlyDenied = false;
+          _isCheckingPermission = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Permission error: $e');
+      if (mounted) {
+        setState(() {
+          _isCheckingPermission = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _restartCamera() async {
+    if (!_hasPermission || !mounted) return;
+    try {
+      if (_scannerController.value.isRunning) {
+        await _scannerController.stop();
+      }
+      await Future.delayed(const Duration(milliseconds: 150));
+      if (mounted && _hasPermission) {
+        await _scannerController.start();
+      }
+    } catch (e) {
+      debugPrint('Error restarting camera: $e');
+    }
+    if (mounted) setState(() {});
   }
 
   /// Instant direct scan of whatever is currently in the camera viewfinder frame (NO external camera app)
@@ -94,14 +173,14 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
         setState(() {
           _isProcessing = false;
         });
-        _showProductResultSheet(product);
+        await _showProductResultSheet(product);
       }
     } catch (e) {
       if (mounted) {
         setState(() {
           _isProcessing = false;
         });
-        _showProductResultSheet(null);
+        await _showProductResultSheet(null);
       }
     }
   }
@@ -136,7 +215,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
         setState(() {
           _isProcessing = false;
         });
-        _showProductResultSheet(product);
+        await _showProductResultSheet(product);
       }
     } catch (e) {
       if (mounted) {
@@ -195,13 +274,20 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
       setState(() {
         _isProcessing = false;
       });
-      _showProductResultSheet(productResult);
+      await _showProductResultSheet(productResult);
     }
   }
 
   /// Show product bottom sheet popup (100% identical to React CamPhotoPopup.jsx)
-  void _showProductResultSheet(Map<String, dynamic>? product) {
-    showModalBottomSheet(
+  Future<void> _showProductResultSheet(Map<String, dynamic>? product) async {
+    try {
+      if (_scannerController.value.isRunning) {
+        await _scannerController.stop();
+      }
+    } catch (_) {}
+
+    if (!mounted) return;
+    await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -424,6 +510,10 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
         );
       },
     );
+
+    if (mounted) {
+      await _restartCamera();
+    }
   }
 
   void _onBottomNavTapped(int index) {
@@ -591,62 +681,13 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
               painter: WavePainter(),
             ),
 
-            // ─── BODY SECTION (Cam Card or Processing Card) ───
+            // ─── BODY SECTION (Camera Card) ───
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
               child: Column(
                 children: [
-                  // Processing State Card
-                  if (_isProcessing)
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 20),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF244082).withValues(alpha: 0.08),
-                            blurRadius: 18,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: const Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          SizedBox(
-                            width: 48,
-                            height: 48,
-                            child: CircularProgressIndicator(
-                              color: _green,
-                              strokeWidth: 3.5,
-                            ),
-                          ),
-                          SizedBox(height: 18),
-                          Text(
-                            'Analyse en cours…',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                              color: _navy,
-                            ),
-                          ),
-                          SizedBox(height: 4),
-                          Text(
-                            'Identification du médicament',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Color(0xFF9CA3AF),
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  else
-                    // Camera Card
-                    Container(
+                  // Camera Card
+                  Container(
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(24),
@@ -670,119 +711,341 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
                               child: Stack(
                                 alignment: Alignment.center,
                                 children: [
-                                  // Scanner view
-                                  MobileScanner(
-                                    controller: _scannerController,
-                                    onDetect: (capture) {
-                                      _lastFrameBytes = capture.image;
-                                      final barcodes = capture.barcodes;
-                                      if (barcodes.isNotEmpty && barcodes.first.rawValue != null) {
-                                        final code = barcodes.first.rawValue!.trim();
-                                        _handleBarcodeDetected(code);
-                                      }
-                                    },
-                                  ),
-
-                                  // 4 Green Corner Brackets
-                                  // Top-Left
-                                  Positioned(
-                                    top: 14,
-                                    left: 14,
-                                    child: Container(
-                                      width: 26,
-                                      height: 26,
-                                      decoration: const BoxDecoration(
-                                        border: Border(
-                                          top: BorderSide(color: _green, width: 3.5),
-                                          left: BorderSide(color: _green, width: 3.5),
-                                        ),
-                                        borderRadius: BorderRadius.only(topLeft: Radius.circular(5)),
+                                  if (_isCheckingPermission)
+                                    const Center(
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          CircularProgressIndicator(
+                                            color: _green,
+                                            strokeWidth: 2.5,
+                                          ),
+                                          SizedBox(height: 14),
+                                          Text(
+                                            'Initialisation de la caméra...',
+                                            style: TextStyle(color: Colors.white70, fontSize: 13),
+                                          ),
+                                        ],
                                       ),
-                                    ),
-                                  ),
-                                  // Top-Right
-                                  Positioned(
-                                    top: 14,
-                                    right: 14,
-                                    child: Container(
-                                      width: 26,
-                                      height: 26,
-                                      decoration: const BoxDecoration(
-                                        border: Border(
-                                          top: BorderSide(color: _green, width: 3.5),
-                                          right: BorderSide(color: _green, width: 3.5),
-                                        ),
-                                        borderRadius: BorderRadius.only(topRight: Radius.circular(5)),
-                                      ),
-                                    ),
-                                  ),
-                                  // Bottom-Left
-                                  Positioned(
-                                    bottom: 14,
-                                    left: 14,
-                                    child: Container(
-                                      width: 26,
-                                      height: 26,
-                                      decoration: const BoxDecoration(
-                                        border: Border(
-                                          bottom: BorderSide(color: _green, width: 3.5),
-                                          left: BorderSide(color: _green, width: 3.5),
-                                        ),
-                                        borderRadius: BorderRadius.only(bottomLeft: Radius.circular(5)),
-                                      ),
-                                    ),
-                                  ),
-                                  // Bottom-Right
-                                  Positioned(
-                                    bottom: 14,
-                                    right: 14,
-                                    child: Container(
-                                      width: 26,
-                                      height: 26,
-                                      decoration: const BoxDecoration(
-                                        border: Border(
-                                          bottom: BorderSide(color: _green, width: 3.5),
-                                          right: BorderSide(color: _green, width: 3.5),
-                                        ),
-                                        borderRadius: BorderRadius.only(bottomRight: Radius.circular(5)),
-                                      ),
-                                    ),
-                                  ),
-
-                                  // Controls (Torch, Flip Camera)
-                                  Positioned(
-                                    top: 12,
-                                    right: 12,
-                                    child: Row(
-                                      children: [
-                                        InkWell(
-                                          onTap: () => _scannerController.toggleTorch(),
-                                          borderRadius: BorderRadius.circular(30),
-                                          child: Container(
-                                            padding: const EdgeInsets.all(8),
-                                            decoration: BoxDecoration(
-                                              color: Colors.black45,
-                                              borderRadius: BorderRadius.circular(30),
+                                    )
+                                  else if (!_hasPermission)
+                                    Center(
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.all(14),
+                                              decoration: BoxDecoration(
+                                                color: Colors.white.withValues(alpha: 0.1),
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: const Icon(
+                                                LucideIcons.cameraOff,
+                                                color: Colors.white,
+                                                size: 34,
+                                              ),
                                             ),
-                                            child: const Icon(LucideIcons.zap, color: Colors.white, size: 18),
+                                            const SizedBox(height: 12),
+                                            const Text(
+                                              'Autorisation caméra requise',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 15,
+                                              ),
+                                              textAlign: TextAlign.center,
+                                            ),
+                                            const SizedBox(height: 6),
+                                            Text(
+                                              _isPermissionPermanentlyDenied
+                                                  ? 'L\'accès caméra est bloqué dans les paramètres. Veuillez l\'autoriser pour scanner vos produits.'
+                                                  : 'Veuillez accorder l\'accès à l\'appareil photo pour identifier vos médicaments instantanément.',
+                                              style: const TextStyle(
+                                                color: Colors.white70,
+                                                fontSize: 12,
+                                                height: 1.35,
+                                              ),
+                                              textAlign: TextAlign.center,
+                                            ),
+                                            const SizedBox(height: 16),
+                                            ElevatedButton.icon(
+                                              onPressed: _isPermissionPermanentlyDenied
+                                                  ? () => openAppSettings()
+                                                  : _checkAndRequestCameraPermission,
+                                              icon: Icon(
+                                                _isPermissionPermanentlyDenied
+                                                    ? LucideIcons.settings
+                                                    : LucideIcons.camera,
+                                                size: 16,
+                                              ),
+                                              label: Text(
+                                                _isPermissionPermanentlyDenied
+                                                    ? 'Ouvrir les paramètres'
+                                                    : 'Autoriser la caméra',
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 13,
+                                                ),
+                                              ),
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: _green,
+                                                foregroundColor: Colors.white,
+                                                padding: const EdgeInsets.symmetric(
+                                                  horizontal: 18,
+                                                  vertical: 10,
+                                                ),
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius: BorderRadius.circular(12),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    )
+                                  else
+                                    // Scanner view
+                                    MobileScanner(
+                                      controller: _scannerController,
+                                      fit: BoxFit.cover,
+                                      placeholderBuilder: (context) {
+                                        return const ColoredBox(
+                                          color: Color(0xFF0D1F3C),
+                                          child: Center(
+                                            child: CircularProgressIndicator(
+                                              color: _green,
+                                              strokeWidth: 2.5,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                      errorBuilder: (context, error) {
+                                        return Center(
+                                          child: Padding(
+                                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                                            child: Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Container(
+                                                  padding: const EdgeInsets.all(12),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.amber.withValues(alpha: 0.15),
+                                                    shape: BoxShape.circle,
+                                                  ),
+                                                  child: const Icon(
+                                                    LucideIcons.alertTriangle,
+                                                    color: Colors.amber,
+                                                    size: 32,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 12),
+                                                const Text(
+                                                  'Impossible d\'activer la caméra',
+                                                  style: TextStyle(
+                                                    color: Colors.white,
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 15,
+                                                  ),
+                                                  textAlign: TextAlign.center,
+                                                ),
+                                                const SizedBox(height: 6),
+                                                const Text(
+                                                  'Une erreur est survenue lors de l\'initialisation de la caméra.',
+                                                  style: TextStyle(
+                                                    color: Colors.white70,
+                                                    fontSize: 12,
+                                                    height: 1.3,
+                                                  ),
+                                                  textAlign: TextAlign.center,
+                                                ),
+                                                const SizedBox(height: 14),
+                                                ElevatedButton.icon(
+                                                  onPressed: _restartCamera,
+                                                  icon: const Icon(LucideIcons.refreshCw, size: 16),
+                                                  label: const Text(
+                                                    'Réessayer',
+                                                    style: TextStyle(fontWeight: FontWeight.w600),
+                                                  ),
+                                                  style: ElevatedButton.styleFrom(
+                                                    backgroundColor: _green,
+                                                    foregroundColor: Colors.white,
+                                                    padding: const EdgeInsets.symmetric(
+                                                      horizontal: 16,
+                                                      vertical: 9,
+                                                    ),
+                                                    shape: RoundedRectangleBorder(
+                                                      borderRadius: BorderRadius.circular(10),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                      onDetect: (capture) {
+                                        _lastFrameBytes = capture.image;
+                                        final barcodes = capture.barcodes;
+                                        if (barcodes.isNotEmpty && barcodes.first.rawValue != null) {
+                                          final code = barcodes.first.rawValue!.trim();
+                                          _handleBarcodeDetected(code);
+                                        }
+                                      },
+                                    ),
+
+                                  if (_hasPermission) ...[
+                                    // 4 Green Corner Brackets
+                                    // Top-Left
+                                    Positioned(
+                                      top: 14,
+                                      left: 14,
+                                      child: Container(
+                                        width: 26,
+                                        height: 26,
+                                        decoration: const BoxDecoration(
+                                          border: Border(
+                                            top: BorderSide(color: _green, width: 3.5),
+                                            left: BorderSide(color: _green, width: 3.5),
+                                          ),
+                                          borderRadius: BorderRadius.only(topLeft: Radius.circular(5)),
+                                        ),
+                                      ),
+                                    ),
+                                    // Top-Right
+                                    Positioned(
+                                      top: 14,
+                                      right: 14,
+                                      child: Container(
+                                        width: 26,
+                                        height: 26,
+                                        decoration: const BoxDecoration(
+                                          border: Border(
+                                            top: BorderSide(color: _green, width: 3.5),
+                                            right: BorderSide(color: _green, width: 3.5),
+                                          ),
+                                          borderRadius: BorderRadius.only(topRight: Radius.circular(5)),
+                                        ),
+                                      ),
+                                    ),
+                                    // Bottom-Left
+                                    Positioned(
+                                      bottom: 14,
+                                      left: 14,
+                                      child: Container(
+                                        width: 26,
+                                        height: 26,
+                                        decoration: const BoxDecoration(
+                                          border: Border(
+                                            bottom: BorderSide(color: _green, width: 3.5),
+                                            left: BorderSide(color: _green, width: 3.5),
+                                          ),
+                                          borderRadius: BorderRadius.only(bottomLeft: Radius.circular(5)),
+                                        ),
+                                      ),
+                                    ),
+                                    // Bottom-Right
+                                    Positioned(
+                                      bottom: 14,
+                                      right: 14,
+                                      child: Container(
+                                        width: 26,
+                                        height: 26,
+                                        decoration: const BoxDecoration(
+                                          border: Border(
+                                            bottom: BorderSide(color: _green, width: 3.5),
+                                            right: BorderSide(color: _green, width: 3.5),
+                                          ),
+                                          borderRadius: BorderRadius.only(bottomRight: Radius.circular(5)),
+                                        ),
+                                      ),
+                                    ),
+
+                                    // Controls (Torch, Flip Camera)
+                                    Positioned(
+                                      top: 12,
+                                      right: 12,
+                                      child: Row(
+                                        children: [
+                                          InkWell(
+                                            onTap: () {
+                                              try {
+                                                _scannerController.toggleTorch();
+                                              } catch (_) {}
+                                            },
+                                            borderRadius: BorderRadius.circular(30),
+                                            child: Container(
+                                              padding: const EdgeInsets.all(8),
+                                              decoration: BoxDecoration(
+                                                color: Colors.black45,
+                                                borderRadius: BorderRadius.circular(30),
+                                              ),
+                                              child: const Icon(LucideIcons.zap, color: Colors.white, size: 18),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          InkWell(
+                                            onTap: () {
+                                              try {
+                                                _scannerController.switchCamera();
+                                              } catch (_) {}
+                                            },
+                                            borderRadius: BorderRadius.circular(30),
+                                            child: Container(
+                                              padding: const EdgeInsets.all(8),
+                                              decoration: BoxDecoration(
+                                                color: Colors.black45,
+                                                borderRadius: BorderRadius.circular(30),
+                                              ),
+                                              child: const Icon(LucideIcons.switchCamera, color: Colors.white, size: 18),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+
+                                  // Processing Overlay on top of camera
+                                  if (_isProcessing)
+                                    Positioned.fill(
+                                      child: Container(
+                                        color: Colors.black.withValues(alpha: 0.72),
+                                        child: const Center(
+                                          child: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              SizedBox(
+                                                width: 44,
+                                                height: 44,
+                                                child: CircularProgressIndicator(
+                                                  color: _green,
+                                                  strokeWidth: 3.5,
+                                                ),
+                                              ),
+                                              SizedBox(height: 16),
+                                              Text(
+                                                'Analyse en cours…',
+                                                style: TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.w800,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                              SizedBox(height: 4),
+                                              Text(
+                                                'Identification du médicament',
+                                                style: TextStyle(
+                                                  fontSize: 12.5,
+                                                  color: Colors.white70,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ),
-                                        const SizedBox(width: 8),
-                                        InkWell(
-                                          onTap: () => _scannerController.switchCamera(),
-                                          borderRadius: BorderRadius.circular(30),
-                                          child: Container(
-                                            padding: const EdgeInsets.all(8),
-                                            decoration: BoxDecoration(
-                                              color: Colors.black45,
-                                              borderRadius: BorderRadius.circular(30),
-                                            ),
-                                            child: const Icon(LucideIcons.switchCamera, color: Colors.white, size: 18),
-                                          ),
-                                        ),
-                                      ],
+                                      ),
                                     ),
-                                  ),
                                 ],
                               ),
                             ),
@@ -797,11 +1060,13 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
                                 SizedBox(
                                   width: double.infinity,
                                   child: ElevatedButton.icon(
-                                    onPressed: _isProcessing ? null : _handleDirectScan,
+                                    onPressed: _isProcessing
+                                        ? null
+                                        : (_hasPermission ? _handleDirectScan : _checkAndRequestCameraPermission),
                                     icon: const Icon(LucideIcons.scanLine, size: 20),
-                                    label: const Text(
-                                      'Scanner le produit',
-                                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+                                    label: Text(
+                                      _hasPermission ? 'Scanner le produit' : 'Autoriser la caméra',
+                                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
                                     ),
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: _green,

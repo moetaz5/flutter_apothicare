@@ -16,6 +16,7 @@ import '../../../core/routes/app_routes.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/utils/app_toast.dart';
 import '../../../shared/widgets/app_bottom_nav_bar.dart';
+import '../../../shared/widgets/app_logout_dialog.dart';
 import '../../../shared/widgets/wave_clipper.dart';
 import 'edit_profile_screen.dart';
 
@@ -96,36 +97,7 @@ class _PharmacienProfileScreenState extends State<PharmacienProfileScreen> {
   }
 
   void _showLogoutDialog() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Déconnexion', style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.forestGreen)),
-        content: const Text('Êtes-vous sûr de vouloir vous déconnecter ?'),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Annuler', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              await context.read<AuthProvider>().logout();
-              if (mounted) {
-                Navigator.pushNamedAndRemoveUntil(context, AppRoutes.signIn, (route) => false);
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.error,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            child: const Text('Déconnexion', style: TextStyle(fontWeight: FontWeight.w700)),
-          ),
-        ],
-      ),
-    );
+    showAppLogoutDialog(context);
   }
 
   void _openGoogleMaps(double lat, double lng) async {
