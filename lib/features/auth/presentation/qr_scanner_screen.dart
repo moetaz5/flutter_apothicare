@@ -87,12 +87,17 @@ class _QrScannerScreenState extends State<QrScannerScreen> with WidgetsBindingOb
 
       if (!mounted) return;
       if (status.isGranted) {
+        final wasAlreadyGranted = _hasPermission;
         setState(() {
           _hasPermission = true;
           _isPermissionPermanentlyDenied = false;
           _isCheckingPermission = false;
         });
-        await _restartCamera();
+        // MobileScanner has autoStart: true, so it will start itself on mount.
+        // Only restart explicitly if it was already mounted and isn't running.
+        if (wasAlreadyGranted && !_scannerController.value.isRunning) {
+          await _restartCamera();
+        }
       } else if (status.isPermanentlyDenied) {
         setState(() {
           _hasPermission = false;
