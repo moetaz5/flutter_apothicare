@@ -40,6 +40,8 @@ import '../../features/gardes/presentation/fiche_pharmacie_screen.dart';
 import '../../core/models/garde_model.dart';
 import '../../features/splash/presentation/splash_screen.dart';
 
+final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
+
 class AppRoutes {
   static const String initial = '/';
   static const String splash = '/splash';

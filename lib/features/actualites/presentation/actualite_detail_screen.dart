@@ -8,6 +8,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/models/actualite_model.dart';
 import '../../../core/providers/actualite_provider.dart';
 import '../../../core/providers/auth_provider.dart';
+import '../../../core/routes/app_routes.dart';
 import '../../../shared/widgets/wave_clipper.dart';
 
 class ActualiteDetailScreen extends StatefulWidget {
@@ -24,7 +25,7 @@ class ActualiteDetailScreen extends StatefulWidget {
   State<ActualiteDetailScreen> createState() => _ActualiteDetailScreenState();
 }
 
-class _ActualiteDetailScreenState extends State<ActualiteDetailScreen> {
+class _ActualiteDetailScreenState extends State<ActualiteDetailScreen> with RouteAware {
   static const Color _navy = Color(0xFF163820);
   static const Color _green = Color(0xFF71A246);
   static const Color _greenDark = Color(0xFF5D8A38);
@@ -41,6 +42,36 @@ class _ActualiteDetailScreenState extends State<ActualiteDetailScreen> {
     super.initState();
     _initVideoPlayer();
     _trackView();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route is PageRoute) {
+      routeObserver.subscribe(this, route);
+    }
+  }
+
+  @override
+  void didPushNext() {
+    _pauseVideo();
+    super.didPushNext();
+  }
+
+  @override
+  void didPop() {
+    _pauseVideo();
+    super.didPop();
+  }
+
+  void _pauseVideo() {
+    if (_videoController != null && _videoController!.value.isPlaying) {
+      _videoController!.pause();
+      if (mounted) {
+        setState(() => _isPlaying = false);
+      }
+    }
   }
 
   void _trackView() {
@@ -92,7 +123,11 @@ class _ActualiteDetailScreenState extends State<ActualiteDetailScreen> {
 
   @override
   void dispose() {
-    _videoController?.dispose();
+    routeObserver.unsubscribe(this);
+    try {
+      _videoController?.pause();
+      _videoController?.dispose();
+    } catch (_) {}
     super.dispose();
   }
 
@@ -186,7 +221,10 @@ class _ActualiteDetailScreenState extends State<ActualiteDetailScreen> {
                         Align(
                           alignment: Alignment.centerLeft,
                           child: InkWell(
-                            onTap: () => Navigator.pop(context),
+                            onTap: () {
+                              _pauseVideo();
+                              Navigator.pop(context);
+                            },
                             borderRadius: BorderRadius.circular(30),
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),

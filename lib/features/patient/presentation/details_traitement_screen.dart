@@ -24,7 +24,7 @@ class DetailsTraitementScreen extends StatefulWidget {
   State<DetailsTraitementScreen> createState() => _DetailsTraitementScreenState();
 }
 
-class _DetailsTraitementScreenState extends State<DetailsTraitementScreen> {
+class _DetailsTraitementScreenState extends State<DetailsTraitementScreen> with RouteAware {
   static const Color _navy = Color(0xFF163820);
   static const Color _green = Color(0xFF71A246);
   static const Color _greenDark = Color(0xFF5D8A38);
@@ -38,11 +38,44 @@ class _DetailsTraitementScreenState extends State<DetailsTraitementScreen> {
   bool _isPlaying = false;
   bool _showControls = true;
   bool _isMuted = false;
+  bool _isOpeningFullScreen = false;
 
   @override
   void initState() {
     super.initState();
     _loadData();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route is PageRoute) {
+      routeObserver.subscribe(this, route);
+    }
+  }
+
+  @override
+  void didPushNext() {
+    if (!_isOpeningFullScreen) {
+      _pauseVideo();
+    }
+    super.didPushNext();
+  }
+
+  @override
+  void didPop() {
+    _pauseVideo();
+    super.didPop();
+  }
+
+  void _pauseVideo() {
+    if (_videoController != null && _videoController!.value.isPlaying) {
+      _videoController!.pause();
+      if (mounted) {
+        setState(() => _isPlaying = false);
+      }
+    }
   }
 
   Future<void> _loadData() async {
@@ -111,7 +144,11 @@ class _DetailsTraitementScreenState extends State<DetailsTraitementScreen> {
 
   @override
   void dispose() {
-    _videoController?.dispose();
+    routeObserver.unsubscribe(this);
+    try {
+      _videoController?.pause();
+      _videoController?.dispose();
+    } catch (_) {}
     super.dispose();
   }
 
@@ -122,18 +159,21 @@ class _DetailsTraitementScreenState extends State<DetailsTraitementScreen> {
     return '$minutes:$seconds';
   }
 
-  void _openFullScreenVideo() {
+  void _openFullScreenVideo() async {
     if (_videoController == null || !_isVideoInitialized) return;
 
-    Navigator.push(
+    _isOpeningFullScreen = true;
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (ctx) => _FullScreenVideoViewer(controller: _videoController!),
       ),
     );
+    _isOpeningFullScreen = false;
   }
 
   void _onBottomNavTapped(int index) {
+    _pauseVideo();
     if (index == 0) {
       Navigator.pushReplacementNamed(context, AppRoutes.homePatient);
     } else if (index == 1) {
@@ -146,6 +186,7 @@ class _DetailsTraitementScreenState extends State<DetailsTraitementScreen> {
   }
 
   void _showLogoutDialog() {
+    _pauseVideo();
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -222,7 +263,10 @@ class _DetailsTraitementScreenState extends State<DetailsTraitementScreen> {
                   Align(
                     alignment: Alignment.topLeft,
                     child: InkWell(
-                      onTap: () => Navigator.pop(context),
+                      onTap: () {
+                        _pauseVideo();
+                        Navigator.pop(context);
+                      },
                       borderRadius: BorderRadius.circular(30),
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
@@ -603,6 +647,7 @@ class _DetailsTraitementScreenState extends State<DetailsTraitementScreen> {
                                   width: double.infinity,
                                   child: ElevatedButton.icon(
                                     onPressed: () {
+                                      _pauseVideo();
                                       Navigator.pushNamed(
                                         context,
                                         AppRoutes.quizTraitement,

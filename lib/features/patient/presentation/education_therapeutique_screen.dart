@@ -17,9 +17,10 @@ class EducationTherapeutiqueScreen extends StatefulWidget {
   State<EducationTherapeutiqueScreen> createState() => _EducationTherapeutiqueScreenState();
 }
 
-class _EducationTherapeutiqueScreenState extends State<EducationTherapeutiqueScreen> {
+class _EducationTherapeutiqueScreenState extends State<EducationTherapeutiqueScreen> with RouteAware {
   final int _currentTabIndex = 0;
   final TextEditingController _searchController = TextEditingController();
+  final ValueNotifier<String?> _activePlayingId = ValueNotifier<String?>(null);
 
   @override
   void initState() {
@@ -34,12 +35,37 @@ class _EducationTherapeutiqueScreenState extends State<EducationTherapeutiqueScr
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route is PageRoute) {
+      routeObserver.subscribe(this, route);
+    }
+  }
+
+  @override
+  void didPushNext() {
+    // When navigating to Details, Quiz, or any screen pushed on top
+    _activePlayingId.value = null;
+    super.didPushNext();
+  }
+
+  @override
+  void didPop() {
+    _activePlayingId.value = null;
+    super.didPop();
+  }
+
+  @override
   void dispose() {
+    routeObserver.unsubscribe(this);
     _searchController.dispose();
+    _activePlayingId.dispose();
     super.dispose();
   }
 
   void _onBottomNavTapped(int index) {
+    _activePlayingId.value = null;
     if (index == 0) {
       Navigator.pushReplacementNamed(context, AppRoutes.homePatient);
     } else if (index == 1) {
@@ -52,6 +78,7 @@ class _EducationTherapeutiqueScreenState extends State<EducationTherapeutiqueScr
   }
 
   void _showLogoutDialog() {
+    _activePlayingId.value = null;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -85,6 +112,7 @@ class _EducationTherapeutiqueScreenState extends State<EducationTherapeutiqueScr
   }
 
   void _showTraitementDetails(Map<String, dynamic> item) {
+    _activePlayingId.value = null;
     Navigator.pushNamed(
       context,
       AppRoutes.detailsTraitement,
@@ -93,6 +121,7 @@ class _EducationTherapeutiqueScreenState extends State<EducationTherapeutiqueScr
   }
 
   void _openQuizDialog(Map<String, dynamic> item) {
+    _activePlayingId.value = null;
     Navigator.pushNamed(
       context,
       AppRoutes.quizTraitement,
@@ -149,7 +178,10 @@ class _EducationTherapeutiqueScreenState extends State<EducationTherapeutiqueScr
                         Row(
                           children: [
                             InkWell(
-                              onTap: () => Navigator.pop(context),
+                              onTap: () {
+                                _activePlayingId.value = null;
+                                Navigator.pop(context);
+                              },
                               borderRadius: BorderRadius.circular(30),
                               child: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
@@ -338,6 +370,7 @@ class _EducationTherapeutiqueScreenState extends State<EducationTherapeutiqueScr
                       return TreatmentVideoCard(
                         key: ValueKey(item['id']?.toString() ?? '$idx'),
                         item: item,
+                        activePlayingId: _activePlayingId,
                         onQuizTap: () => _openQuizDialog(item),
                         onDetailsTap: () => _showTraitementDetails(item),
                       );
@@ -403,12 +436,14 @@ class _EducationTherapeutiqueScreenState extends State<EducationTherapeutiqueScr
 // ─── TREATMENT VIDEO CARD (Identique React ListTraitement.jsx) ───
 class TreatmentVideoCard extends StatefulWidget {
   final Map<String, dynamic> item;
+  final ValueNotifier<String?>? activePlayingId;
   final VoidCallback onQuizTap;
   final VoidCallback onDetailsTap;
 
   const TreatmentVideoCard({
     super.key,
     required this.item,
+    this.activePlayingId,
     required this.onQuizTap,
     required this.onDetailsTap,
   });
@@ -417,7 +452,7 @@ class TreatmentVideoCard extends StatefulWidget {
   State<TreatmentVideoCard> createState() => _TreatmentVideoCardState();
 }
 
-class _TreatmentVideoCardState extends State<TreatmentVideoCard> {
+class _TreatmentVideoCardState extends State<TreatmentVideoCard> with RouteAware {
   VideoPlayerController? _controller;
   bool _isInitialized = false;
   bool _hasError = false;
@@ -426,6 +461,46 @@ class _TreatmentVideoCardState extends State<TreatmentVideoCard> {
   void initState() {
     super.initState();
     _initVideo();
+    widget.activePlayingId?.addListener(_onActivePlayerChanged);
+  }
+
+  void _onActivePlayerChanged() {
+    final activeId = widget.activePlayingId?.value;
+    final myId = widget.item['id']?.toString();
+    if (activeId == null || (myId != null && activeId != myId)) {
+      _pauseVideo();
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route is PageRoute) {
+      routeObserver.subscribe(this, route);
+    }
+  }
+
+  @override
+  void didPushNext() {
+    // When navigating to Details, Quiz, or any screen pushed on top
+    _pauseVideo();
+    super.didPushNext();
+  }
+
+  @override
+  void didPop() {
+    _pauseVideo();
+    super.didPop();
+  }
+
+  void _pauseVideo() {
+    if (_controller != null && _controller!.value.isPlaying) {
+      _controller!.pause();
+      if (mounted) {
+        setState(() {});
+      }
+    }
   }
 
   void _initVideo() {
@@ -457,16 +532,28 @@ class _TreatmentVideoCardState extends State<TreatmentVideoCard> {
 
   @override
   void dispose() {
-    _controller?.dispose();
+    routeObserver.unsubscribe(this);
+    widget.activePlayingId?.removeListener(_onActivePlayerChanged);
+    try {
+      _controller?.pause();
+      _controller?.dispose();
+    } catch (_) {}
     super.dispose();
   }
 
   void _togglePlay() {
     if (_controller == null || !_isInitialized) return;
+    final myId = widget.item['id']?.toString();
     setState(() {
       if (_controller!.value.isPlaying) {
         _controller!.pause();
+        if (widget.activePlayingId?.value == myId) {
+          widget.activePlayingId?.value = null;
+        }
       } else {
+        if (myId != null) {
+          widget.activePlayingId?.value = myId;
+        }
         _controller!.play();
       }
     });
@@ -645,7 +732,10 @@ class _TreatmentVideoCardState extends State<TreatmentVideoCard> {
 
                   // Orange Quiz Button (matches React .lt-btn-quiz)
                   InkWell(
-                    onTap: widget.onQuizTap,
+                    onTap: () {
+                      _pauseVideo();
+                      widget.onQuizTap();
+                    },
                     borderRadius: BorderRadius.circular(30),
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
@@ -688,7 +778,10 @@ class _TreatmentVideoCardState extends State<TreatmentVideoCard> {
 
                   // Footer: Lire la suite & Arrow circle
                   InkWell(
-                    onTap: widget.onDetailsTap,
+                    onTap: () {
+                      _pauseVideo();
+                      widget.onDetailsTap();
+                    },
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [

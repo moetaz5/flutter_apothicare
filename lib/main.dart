@@ -104,6 +104,7 @@ class ApothicareApp extends StatelessWidget {
       ],
       child: MaterialApp(
         navigatorKey: AppToast.navigatorKey,
+        navigatorObservers: [routeObserver],
         title: 'Apothicare',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
