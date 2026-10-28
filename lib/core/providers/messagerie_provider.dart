@@ -250,7 +250,7 @@ class MessagerieProvider extends ChangeNotifier {
 
   Future<void> fetchUnreadCounts({required int idReceiver, int type = 2}) async {
     try {
-      final response = await _api.post('message/getUnreadCounts', data: {
+      final response = await _api.post('api/getUnreadCounts', data: {
         'id_receiver': idReceiver,
         'type': type,
       });

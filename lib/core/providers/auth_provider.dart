@@ -342,7 +342,7 @@ class AuthProvider extends ChangeNotifier {
       // 1. Check Actualités count for badge
       try {
         final response = await _api.post(
-          'settings/getNotifActualites',
+          'api/getNotifActualites',
           data: {'id_user': _currentUser!.id},
           timeout: const Duration(seconds: 3),
         );
@@ -356,7 +356,7 @@ class AuthProvider extends ChangeNotifier {
       // 2. Check Unread Messages count for badge
       try {
         final msgRes = await _api.post(
-          'message/getUnreadCounts',
+          'api/getUnreadCounts',
           data: {
             'id_receiver': _currentUser!.id,
             'type': 2,
