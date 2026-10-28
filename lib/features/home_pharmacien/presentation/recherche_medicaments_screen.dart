@@ -190,9 +190,12 @@ class _RechercheMedicamentsScreenState extends State<RechercheMedicamentsScreen>
                   color: Colors.white,
                   borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
                 ),
-                child: Column(
-                  children: [
-                    const SizedBox(height: 12),
+                child: SafeArea(
+                  top: false,
+                  bottom: true,
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 12),
                     Container(
                       width: 44,
                       height: 5,
@@ -296,7 +299,8 @@ class _RechercheMedicamentsScreenState extends State<RechercheMedicamentsScreen>
                     ),
                   ],
                 ),
-              );
+              ),
+            );
             },
           );
         },
@@ -317,66 +321,71 @@ class _RechercheMedicamentsScreenState extends State<RechercheMedicamentsScreen>
               color: Colors.white,
               borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
             ),
-            child: Column(
-              children: [
-                const SizedBox(height: 12),
-                Container(
-                  width: 44,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFCBD5E1),
-                    borderRadius: BorderRadius.circular(10),
+            child: SafeArea(
+              top: false,
+              bottom: true,
+              child: Column(
+                children: [
+                  const SizedBox(height: 12),
+                  Container(
+                    width: 44,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFCBD5E1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Sélectionner des grossistes',
-                        style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: _navy),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.pop(modalCtx),
-                        child: const Text('Terminer', style: TextStyle(color: _green, fontWeight: FontWeight.w800)),
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: ListView.separated(
-                    itemCount: allGrossistes.length,
-                    separatorBuilder: (_, __) => const Divider(height: 1, color: Color(0xFFF1F5F9)),
-                    itemBuilder: (c, i) {
-                      final item = allGrossistes[i];
-                      final isSelected = _selectedGrossistes.any((g) => g.id == item.id);
-                      return CheckboxListTile(
-                        value: isSelected,
-                        activeColor: _green,
-                        title: Text(
-                          item.nom,
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                            color: isSelected ? _navy : const Color(0xFF334155),
-                          ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Sélectionner des grossistes',
+                          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: _navy),
                         ),
-                        onChanged: (val) {
-                          setModalState(() {
-                            if (val == true) {
-                              _selectedGrossistes.add(item);
-                            } else {
-                              _selectedGrossistes.removeWhere((g) => g.id == item.id);
-                            }
-                          });
-                          setState(() {});
-                        },
-                      );
-                    },
+                        TextButton(
+                          onPressed: () => Navigator.pop(modalCtx),
+                          child: const Text('Terminer', style: TextStyle(color: _green, fontWeight: FontWeight.w800)),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                  Expanded(
+                    child: ListView.separated(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      itemCount: allGrossistes.length,
+                      separatorBuilder: (_, __) => const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                      itemBuilder: (c, i) {
+                        final item = allGrossistes[i];
+                        final isSelected = _selectedGrossistes.any((g) => g.id == item.id);
+                        return CheckboxListTile(
+                          value: isSelected,
+                          activeColor: _green,
+                          title: Text(
+                            item.nom,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                              color: isSelected ? _navy : const Color(0xFF334155),
+                            ),
+                          ),
+                          onChanged: (val) {
+                            setModalState(() {
+                              if (val == true) {
+                                _selectedGrossistes.add(item);
+                              } else {
+                                _selectedGrossistes.removeWhere((g) => g.id == item.id);
+                              }
+                            });
+                            setState(() {});
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
             ),
           );
         },

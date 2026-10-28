@@ -227,7 +227,7 @@ class _MessagerieScreenState extends State<MessagerieScreen> {
       context: context,
       backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
         decoration: const BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.only(
@@ -235,63 +235,67 @@ class _MessagerieScreenState extends State<MessagerieScreen> {
             topRight: Radius.circular(24),
           ),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFCBD5E1),
-                  borderRadius: BorderRadius.circular(10),
+        child: SafeArea(
+          top: false,
+          bottom: true,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFCBD5E1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Joindre une pièce',
-              style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFF0F172A),
+              const SizedBox(height: 16),
+              const Text(
+                'Joindre une pièce',
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF0F172A),
+                ),
               ),
-            ),
-            const SizedBox(height: 18),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildAttachmentOption(
-                  icon: LucideIcons.camera,
-                  label: 'Appareil photo',
-                  color: const Color(0xFF3B82F6),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    _pickImage(ImageSource.camera);
-                  },
-                ),
-                _buildAttachmentOption(
-                  icon: LucideIcons.image,
-                  label: 'Galerie photo',
-                  color: const Color(0xFF10B981),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    _pickImage(ImageSource.gallery);
-                  },
-                ),
-                _buildAttachmentOption(
-                  icon: LucideIcons.fileText,
-                  label: 'Document',
-                  color: const Color(0xFF8B5CF6),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    _pickDocument();
-                  },
-                ),
-              ],
-            ),
-          ],
+              const SizedBox(height: 18),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildAttachmentOption(
+                    icon: LucideIcons.camera,
+                    label: 'Appareil photo',
+                    color: const Color(0xFF3B82F6),
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _pickImage(ImageSource.camera);
+                    },
+                  ),
+                  _buildAttachmentOption(
+                    icon: LucideIcons.image,
+                    label: 'Galerie photo',
+                    color: const Color(0xFF10B981),
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _pickImage(ImageSource.gallery);
+                    },
+                  ),
+                  _buildAttachmentOption(
+                    icon: LucideIcons.fileText,
+                    label: 'Document',
+                    color: const Color(0xFF8B5CF6),
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _pickDocument();
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -569,7 +573,10 @@ class _MessagerieScreenState extends State<MessagerieScreen> {
                 topRight: Radius.circular(28),
               ),
             ),
-            child: Column(
+            child: SafeArea(
+              top: false,
+              bottom: true,
+              child: Column(
               children: [
                 // Modal Handle Bar
                 const SizedBox(height: 12),
@@ -800,7 +807,8 @@ class _MessagerieScreenState extends State<MessagerieScreen> {
                 ),
               ],
             ),
-          );
+          ),
+        );
         },
       ),
     );

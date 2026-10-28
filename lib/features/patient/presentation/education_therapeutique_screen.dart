@@ -8,6 +8,7 @@ import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/traitement_provider.dart';
 import '../../../core/routes/app_routes.dart';
 import '../../../shared/widgets/app_bottom_nav_bar.dart';
+import '../../../shared/widgets/full_screen_video_viewer.dart';
 import '../../../shared/widgets/wave_clipper.dart';
 
 class EducationTherapeutiqueScreen extends StatefulWidget {
@@ -559,6 +560,24 @@ class _TreatmentVideoCardState extends State<TreatmentVideoCard> with RouteAware
     });
   }
 
+  void _openFullScreenVideo() async {
+    if (_controller == null || !_isInitialized) return;
+    final myId = widget.item['id']?.toString();
+    if (myId != null) {
+      widget.activePlayingId?.value = myId;
+    }
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (ctx) => FullScreenVideoViewer(
+          controller: _controller!,
+          title: widget.item['nom']?.toString() ?? 'Vidéo éducative',
+        ),
+      ),
+    );
+    if (mounted) setState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
     final nom = widget.item['nom']?.toString() ?? 'Traitement';
@@ -680,6 +699,90 @@ class _TreatmentVideoCardState extends State<TreatmentVideoCard> with RouteAware
                             color: Colors.white,
                             letterSpacing: 0.2,
                           ),
+                        ),
+                      ),
+                    ),
+
+                  // Fullscreen Button Overlay (top-right)
+                  if (hasVideo && _isInitialized && _controller != null)
+                    Positioned(
+                      top: 10,
+                      right: 10,
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: _openFullScreenVideo,
+                          borderRadius: BorderRadius.circular(20),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0D1F3C).withValues(alpha: 0.85),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: Colors.white.withValues(alpha: 0.35), width: 1),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.3),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(LucideIcons.maximize2, color: Colors.white, size: 13),
+                                SizedBox(width: 5),
+                                Text(
+                                  'Plein écran',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.2,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                  // Bottom Progress Bar & Fullscreen Shortcut when playing
+                  if (hasVideo && _isInitialized && _controller != null && isPlaying)
+                    Positioned(
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Colors.transparent, Colors.black.withValues(alpha: 0.75)],
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: VideoProgressIndicator(
+                                _controller!,
+                                allowScrubbing: true,
+                                padding: const EdgeInsets.symmetric(vertical: 4),
+                                colors: const VideoProgressColors(
+                                  playedColor: Color(0xFF71A246),
+                                  bufferedColor: Colors.white24,
+                                  backgroundColor: Colors.white12,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            InkWell(
+                              onTap: _openFullScreenVideo,
+                              child: const Icon(LucideIcons.maximize2, color: Colors.white, size: 16),
+                            ),
+                          ],
                         ),
                       ),
                     ),

@@ -8,8 +8,10 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/providers/actualite_provider.dart';
 import '../../../core/providers/admin_provider.dart';
 import '../../../core/providers/auth_provider.dart';
+import '../../../core/services/notification_service.dart';
 import '../../../core/storage/storage_service.dart';
 import '../../../core/utils/app_toast.dart';
+import 'package:geolocator/geolocator.dart';
 import '../../admin/presentation/home_admin_screen.dart';
 import '../../auth/presentation/sign_in_screen.dart';
 import '../../home_patient/presentation/home_patient_screen.dart';
@@ -38,41 +40,73 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     _startAppInitialization();
   }
 
-  void _startAppInitialization() {
-    // Smooth progress simulation
-    const totalSteps = 20;
-    int currentStep = 0;
-    _progressTimer = Timer.periodic(const Duration(milliseconds: 90), (timer) {
-      if (!mounted) return;
-      currentStep++;
-      setState(() {
-        _loadingProgress = (currentStep / totalSteps).clamp(0.0, 1.0);
-      });
-      if (currentStep >= totalSteps) {
-        timer.cancel();
-        _navigateNext();
-      }
-    });
+  void _startAppInitialization() async {
+    // 1. Initial visual progress
+    await _animateProgress(0.0, 0.35, const Duration(milliseconds: 350));
 
-    // Background preload tasks
-    Future.microtask(() async {
-      try {
-        if (!mounted) return;
-        final auth = context.read<AuthProvider>();
-        if (auth.isAuthenticated) {
-          auth.fetchUnreadNotifications();
-          final user = auth.currentUser;
-          if (!mounted) return;
-          if (user?.isAdmin == true || user?.idRole == 1) {
-            context.read<AdminProvider>().fetchUsers();
-            context.read<AdminProvider>().fetchAnnees();
-          }
-          if (mounted) {
-            context.read<ActualiteProvider>().fetchActualites();
-          }
+    // Wait until the first frame is rendered on screen
+    await Future.delayed(const Duration(milliseconds: 250));
+    if (!mounted) return;
+
+    // 2. Notification Permission (shown first)
+    try {
+      await NotificationService.requestPermissions();
+    } catch (_) {}
+
+    if (!mounted) return;
+    await _animateProgress(_loadingProgress, 0.65, const Duration(milliseconds: 250));
+
+    // Smooth delay between the two OS dialogs
+    await Future.delayed(const Duration(milliseconds: 350));
+    if (!mounted) return;
+
+    // 3. Map / Location Permission (shown right after notification permission on first launch)
+    try {
+      final hasAsked = StorageService.getBool('initial_location_permission_requested') ?? false;
+      if (!hasAsked) {
+        final perm = await Geolocator.checkPermission();
+        if (perm == LocationPermission.denied) {
+          await Geolocator.requestPermission();
         }
-      } catch (_) {}
-    });
+        await StorageService.setBool('initial_location_permission_requested', true);
+      }
+    } catch (_) {}
+
+    if (!mounted) return;
+
+    // 4. Background preload tasks
+    try {
+      final auth = context.read<AuthProvider>();
+      if (auth.isAuthenticated) {
+        auth.fetchUnreadNotifications();
+        final user = auth.currentUser;
+        if (user?.isAdmin == true || user?.idRole == 1) {
+          context.read<AdminProvider>().fetchUsers();
+          context.read<AdminProvider>().fetchAnnees();
+        }
+        context.read<ActualiteProvider>().fetchActualites();
+      }
+    } catch (_) {}
+
+    // 5. Complete progress to 100% and navigate
+    if (!mounted) return;
+    await _animateProgress(_loadingProgress, 1.0, const Duration(milliseconds: 300));
+    if (!mounted) return;
+    _navigateNext();
+  }
+
+  Future<void> _animateProgress(double from, double to, Duration duration) async {
+    const steps = 10;
+    final stepDuration = Duration(milliseconds: (duration.inMilliseconds / steps).round());
+    final delta = (to - from) / steps;
+    for (int i = 1; i <= steps; i++) {
+      if (!mounted) return;
+      await Future.delayed(stepDuration);
+      if (!mounted) return;
+      setState(() {
+        _loadingProgress = (from + delta * i).clamp(0.0, 1.0);
+      });
+    }
   }
 
   void _navigateNext() {

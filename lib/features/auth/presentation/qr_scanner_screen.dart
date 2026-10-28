@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
@@ -73,6 +74,29 @@ class _QrScannerScreenState extends State<QrScannerScreen> with WidgetsBindingOb
     super.dispose();
   }
 
+  void _onPermissionButtonPressed() async {
+    if (Platform.isIOS) {
+      var status = await Permission.camera.status;
+      if (status.isPermanentlyDenied) {
+        await openAppSettings();
+      } else {
+        await _checkAndRequestCameraPermission();
+        if (!_hasPermission && mounted) {
+          final newStatus = await Permission.camera.status;
+          if (newStatus.isPermanentlyDenied || newStatus.isDenied) {
+            await openAppSettings();
+          }
+        }
+      }
+    } else {
+      if (_isPermissionPermanentlyDenied) {
+        await openAppSettings();
+      } else {
+        await _checkAndRequestCameraPermission();
+      }
+    }
+  }
+
   Future<void> _checkAndRequestCameraPermission() async {
     if (!mounted) return;
     setState(() {
@@ -80,6 +104,51 @@ class _QrScannerScreenState extends State<QrScannerScreen> with WidgetsBindingOb
     });
 
     try {
+      if (Platform.isIOS) {
+        // --- LOGIQUE SPÉCIFIQUE iOS ---
+        var status = await Permission.camera.status;
+        if (!status.isGranted) {
+          status = await Permission.camera.request();
+        }
+
+        if (!mounted) return;
+        if (status.isGranted) {
+          final wasAlreadyGranted = _hasPermission;
+          setState(() {
+            _hasPermission = true;
+            _isPermissionPermanentlyDenied = false;
+            _isCheckingPermission = false;
+          });
+          if (wasAlreadyGranted && !_scannerController.value.isRunning) {
+            await _restartCamera();
+          }
+          return;
+        }
+
+        // Fallback natif iOS: tester si MobileScanner AVFoundation démarre
+        try {
+          await _scannerController.start();
+          if (!mounted) return;
+          setState(() {
+            _hasPermission = true;
+            _isPermissionPermanentlyDenied = false;
+            _isCheckingPermission = false;
+          });
+          return;
+        } catch (_) {
+          // Refusé par l'utilisateur sous iOS
+        }
+
+        if (!mounted) return;
+        setState(() {
+          _hasPermission = false;
+          _isPermissionPermanentlyDenied = status.isPermanentlyDenied;
+          _isCheckingPermission = false;
+        });
+        return;
+      }
+
+      // --- LOGIQUE ANDROID (STRICTEMENT INCHANGÉE) ---
       var status = await Permission.camera.status;
       if (!status.isGranted && !status.isPermanentlyDenied) {
         status = await Permission.camera.request();
@@ -776,9 +845,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> with WidgetsBindingOb
                                             ),
                                             const SizedBox(height: 16),
                                             ElevatedButton.icon(
-                                              onPressed: _isPermissionPermanentlyDenied
-                                                  ? () => openAppSettings()
-                                                  : _checkAndRequestCameraPermission,
+                                              onPressed: _onPermissionButtonPressed,
                                               icon: Icon(
                                                 _isPermissionPermanentlyDenied
                                                     ? LucideIcons.settings
@@ -1067,7 +1134,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> with WidgetsBindingOb
                                   child: ElevatedButton.icon(
                                     onPressed: _isProcessing
                                         ? null
-                                        : (_hasPermission ? _handleDirectScan : _checkAndRequestCameraPermission),
+                                        : (_hasPermission ? _handleDirectScan : _onPermissionButtonPressed),
                                     icon: const Icon(LucideIcons.scanLine, size: 20),
                                     label: Text(
                                       _hasPermission ? 'Scanner le produit' : 'Autoriser la caméra',

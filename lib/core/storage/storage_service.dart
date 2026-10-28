@@ -64,8 +64,21 @@ class StorageService {
     return _prefs?.getString('selected_annee');
   }
 
+  // Generic boolean flags
+  static bool? getBool(String key) {
+    return _prefs?.getBool(key);
+  }
+
+  static Future<void> setBool(String key, bool value) async {
+    await _prefs?.setBool(key, value);
+  }
+
   // Clear all
   static Future<void> clearAll() async {
+    final locationAsked = getBool('initial_location_permission_requested') ?? false;
     await _prefs?.clear();
+    if (locationAsked) {
+      await setBool('initial_location_permission_requested', true);
+    }
   }
 }

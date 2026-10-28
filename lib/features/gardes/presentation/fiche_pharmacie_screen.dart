@@ -194,9 +194,17 @@ class _FichePharmacieScreenState extends State<FichePharmacieScreen> {
   }
 
   Future<void> _openGoogleMaps(double lat, double lng) async {
-    final uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng');
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    final uri = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$lng&dir_action=navigate');
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        await launchUrl(uri);
+      }
+    } catch (_) {
+      try {
+        await launchUrl(uri);
+      } catch (_) {}
     }
   }
 

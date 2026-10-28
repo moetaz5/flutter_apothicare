@@ -9,6 +9,7 @@ import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/traitement_provider.dart';
 import '../../../core/routes/app_routes.dart';
 import '../../../shared/widgets/app_bottom_nav_bar.dart';
+import '../../../shared/widgets/full_screen_video_viewer.dart';
 
 class DetailsTraitementScreen extends StatefulWidget {
   final dynamic traitement;
@@ -166,7 +167,10 @@ class _DetailsTraitementScreenState extends State<DetailsTraitementScreen> with 
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (ctx) => _FullScreenVideoViewer(controller: _videoController!),
+        builder: (ctx) => FullScreenVideoViewer(
+          controller: _videoController!,
+          title: _traitementData?['nom']?.toString() ?? 'Vidéo éducative',
+        ),
       ),
     );
     _isOpeningFullScreen = false;
@@ -683,132 +687,6 @@ class _DetailsTraitementScreenState extends State<DetailsTraitementScreen> with 
         currentIndex: 0,
         notifCount: auth.unreadNotifications,
         onTap: _onBottomNavTapped,
-      ),
-    );
-  }
-}
-
-// ─── FULLSCREEN VIDEO VIEWER ───
-class _FullScreenVideoViewer extends StatefulWidget {
-  final VideoPlayerController controller;
-
-  const _FullScreenVideoViewer({required this.controller});
-
-  @override
-  State<_FullScreenVideoViewer> createState() => _FullScreenVideoViewerState();
-}
-
-class _FullScreenVideoViewerState extends State<_FullScreenVideoViewer> {
-  bool _showControls = true;
-
-  @override
-  void initState() {
-    super.initState();
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-  }
-
-  @override
-  void dispose() {
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: GestureDetector(
-        onTap: () => setState(() => _showControls = !_showControls),
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            Center(
-              child: AspectRatio(
-                aspectRatio: widget.controller.value.aspectRatio,
-                child: VideoPlayer(widget.controller),
-              ),
-            ),
-
-            if (_showControls) ...[
-              Container(color: Colors.black45),
-
-              // Close / Back button
-              Positioned(
-                top: 36,
-                left: 20,
-                child: InkWell(
-                  onTap: () => Navigator.pop(context),
-                  borderRadius: BorderRadius.circular(30),
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.black54,
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                    child: const Icon(LucideIcons.x, color: Colors.white, size: 22),
-                  ),
-                ),
-              ),
-
-              // Center Play / Pause
-              IconButton(
-                iconSize: 64,
-                icon: Icon(
-                  widget.controller.value.isPlaying ? LucideIcons.pauseCircle : LucideIcons.playCircle,
-                  color: Colors.white,
-                ),
-                onPressed: () {
-                  setState(() {
-                    if (widget.controller.value.isPlaying) {
-                      widget.controller.pause();
-                    } else {
-                      widget.controller.play();
-                    }
-                  });
-                },
-              ),
-
-              // Bottom timeline
-              Positioned(
-                bottom: 24,
-                left: 20,
-                right: 20,
-                child: Column(
-                  children: [
-                    VideoProgressIndicator(
-                      widget.controller,
-                      allowScrubbing: true,
-                      colors: const VideoProgressColors(
-                        playedColor: Color(0xFF71A246),
-                        bufferedColor: Colors.white24,
-                        backgroundColor: Colors.white12,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        ValueListenableBuilder(
-                          valueListenable: widget.controller,
-                          builder: (context, VideoPlayerValue value, _) {
-                            String twoDigits(int n) => n.toString().padLeft(2, '0');
-                            final pos = '${twoDigits(value.position.inMinutes.remainder(60))}:${twoDigits(value.position.inSeconds.remainder(60))}';
-                            final dur = '${twoDigits(value.duration.inMinutes.remainder(60))}:${twoDigits(value.duration.inSeconds.remainder(60))}';
-                            return Text('$pos / $dur', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600));
-                          },
-                        ),
-                        InkWell(
-                          onTap: () => Navigator.pop(context),
-                          child: const Icon(LucideIcons.minimize2, color: Colors.white, size: 20),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ],
-        ),
       ),
     );
   }

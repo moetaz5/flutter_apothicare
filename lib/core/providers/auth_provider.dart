@@ -27,7 +27,16 @@ class AuthProvider extends ChangeNotifier {
   bool get isAuthenticated => _currentUser != null && StorageService.getToken() != null;
 
   AuthProvider() {
+    ApiClient.onSessionExpired = handleSessionExpiredLocally;
     _loadStoredUser();
+  }
+
+  void handleSessionExpiredLocally() {
+    _stopNotificationPolling();
+    _currentUser = null;
+    _unreadNotifications = 0;
+    _unreadMessages = 0;
+    notifyListeners();
   }
 
   void _loadStoredUser() {

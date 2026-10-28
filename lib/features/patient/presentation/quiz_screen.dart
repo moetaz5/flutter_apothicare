@@ -1,11 +1,14 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/providers/auth_provider.dart';
+import '../../../core/providers/patient_provider.dart';
 import '../../../core/providers/traitement_provider.dart';
 import '../../../core/routes/app_routes.dart';
+import '../../../core/utils/app_toast.dart';
 import '../../../shared/widgets/app_bottom_nav_bar.dart';
 
 class QuizScreen extends StatefulWidget {
@@ -152,13 +155,19 @@ class _QuizScreenState extends State<QuizScreen> {
     final auth = context.read<AuthProvider>();
     final patientId = auth.currentUser?.id;
     final traitementId = _traitement?['id'] ?? widget.traitementId;
+    final questions = _questions;
+    final bool isSuccess = (questions.isNotEmpty && finalScore == questions.length) || finalScore == 5;
 
     if (patientId != null && traitementId != null) {
       await context.read<TraitementProvider>().sendQuizResponse(
             patientId: patientId,
-            point: finalScore == 5 ? 1 : 0,
+            point: isSuccess ? 1 : 0,
             traitementId: traitementId,
           );
+      if (isSuccess && mounted) {
+        context.read<PatientProvider>().fetchPatientPoints();
+        AppToast.showSuccess('🎉 Félicitations ! +1 point gagné sur votre Carte Soin !');
+      }
     }
 
     _isSubmitting = false;
@@ -170,7 +179,7 @@ class _QuizScreenState extends State<QuizScreen> {
       backgroundColor: Colors.transparent,
       builder: (ctx) {
         return Container(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
           decoration: const BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.only(
@@ -178,69 +187,73 @@ class _QuizScreenState extends State<QuizScreen> {
               topRight: Radius.circular(26),
             ),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
-              ),
-              const SizedBox(height: 20),
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: [Color(0xFFFEF08A), Color(0xFFFBBF24)]),
-                  borderRadius: BorderRadius.circular(18),
+          child: SafeArea(
+            top: false,
+            bottom: true,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
                 ),
-                child: const Center(child: Text('⚠️', style: TextStyle(fontSize: 26))),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Quitter le quiz ?',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: _navy),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Vos réponses actuelles seront soumises et vous ne pourrez plus revenir à cette question.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 13.5, color: Color(0xFF6B7280), height: 1.5),
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(ctx);
-                    _timer?.cancel();
-                    _sendResponse(_score, type: 2);
-                    Navigator.pop(context);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFDC2626),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                const SizedBox(height: 20),
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(colors: [Color(0xFFFEF08A), Color(0xFFFBBF24)]),
+                    borderRadius: BorderRadius.circular(18),
                   ),
-                  child: const Text('Oui, soumettre et quitter', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                  child: const Center(child: Text('⚠️', style: TextStyle(fontSize: 26))),
                 ),
-              ),
-              const SizedBox(height: 10),
-              SizedBox(
-                width: double.infinity,
-                child: TextButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    backgroundColor: const Color(0xFFF3F4F6),
-                    foregroundColor: const Color(0xFF374151),
+                const SizedBox(height: 16),
+                const Text(
+                  'Quitter le quiz ?',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: _navy),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Vos réponses actuelles seront soumises et vous ne pourrez plus revenir à cette question.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 13.5, color: Color(0xFF6B7280), height: 1.5),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      _timer?.cancel();
+                      _sendResponse(_score, type: 2);
+                      Navigator.pop(context);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFDC2626),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    child: const Text('Oui, soumettre et quitter', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
                   ),
-                  child: const Text('Non, continuer le quiz', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
                 ),
-              ),
-            ],
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      backgroundColor: const Color(0xFFF3F4F6),
+                      foregroundColor: const Color(0xFF374151),
+                    ),
+                    child: const Text('Non, continuer le quiz', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -253,6 +266,7 @@ class _QuizScreenState extends State<QuizScreen> {
       _selectedResponseIndex = null;
       _score = 0;
       _quizFinished = false;
+      _isSubmitting = false;
       if (_durationMinutes > 0) {
         _timeLeftSeconds = _durationMinutes * 60;
         _startTimer();
@@ -313,15 +327,18 @@ class _QuizScreenState extends State<QuizScreen> {
 
     // ─── RESULTS SCREEN (Exact React qz-results-root) ───
     if (_quizFinished && _traitement != null) {
+      final totalQuestions = questions.isNotEmpty ? questions.length : 5;
+      final bool isWinner = (questions.isNotEmpty && _score == questions.length) || _score >= 5;
+      final bool hasGoodScore = _score >= (totalQuestions * 0.6).ceil();
+
       return Scaffold(
         backgroundColor: _bgGrey,
-        body: SingleChildScrollView(
-          child: Column(
-            children: [
-              // Hero Results Banner
-              Container(
+        body: Column(
+          children: [
+            // Hero Results Banner (fills available top space)
+            Expanded(
+              child: Container(
                 width: double.infinity,
-                padding: EdgeInsets.fromLTRB(24, topPadding + 24, 24, 60),
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
@@ -329,73 +346,227 @@ class _QuizScreenState extends State<QuizScreen> {
                     colors: [_navy, Color(0xFF0F2916)],
                   ),
                 ),
-                child: Column(
-                  children: [
-                    const Text('🎉', style: TextStyle(fontSize: 52)),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'Bravo !',
-                      style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w900),
-                    ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      'Vous avez terminé le quiz',
-                      style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w500),
-                    ),
-                    const SizedBox(height: 24),
+                child: SafeArea(
+                  bottom: false,
+                  child: Center(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              isWinner ? '🎉' : (hasGoodScore ? '👏' : '🎯'),
+                              style: const TextStyle(fontSize: 48),
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              isWinner ? 'Bravo !' : (hasGoodScore ? 'Bien joué !' : 'Quiz terminé'),
+                              style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w900),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              isWinner
+                                  ? 'Félicitations, vous avez réussi le quiz !'
+                                  : 'Vous avez terminé le quiz',
+                              style: const TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w500),
+                            ),
+                            const SizedBox(height: 16),
 
-                    // Score Badge
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 16),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.22), width: 1.5),
-                      ),
-                      child: Column(
-                        children: [
-                          Text(
-                            '$_score / ${questions.length}',
-                            style: const TextStyle(fontSize: 38, fontWeight: FontWeight.w900, color: Colors.white),
-                          ),
-                          const SizedBox(height: 2),
-                          const Text(
-                            'BONNES RÉPONSES',
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white70, letterSpacing: 0.5),
-                          ),
-                        ],
+                            // Score Badge
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 12),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: Colors.white.withValues(alpha: 0.22), width: 1.5),
+                              ),
+                              child: Column(
+                                children: [
+                                  Text(
+                                    '$_score / $totalQuestions',
+                                    style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w900, color: Colors.white),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  const Text(
+                                    'BONNES RÉPONSES',
+                                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white70, letterSpacing: 0.5),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            // ─── GAGNÉ DE POINTS BADGE ───
+                            if (isWinner) ...[
+                              const SizedBox(height: 14),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8.5),
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [Color(0xFFFBBF24), Color(0xFFF59E0B), Color(0xFFD97706)],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                  borderRadius: BorderRadius.circular(30),
+                                  border: Border.all(color: const Color(0xFFFEF08A), width: 1.5),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFFF59E0B).withValues(alpha: 0.45),
+                                      blurRadius: 14,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(LucideIcons.sparkles, color: Colors.white, size: 17),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      '+1 POINT GAGNÉ !',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 14.5,
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: 0.6,
+                                      ),
+                                    ),
+                                    SizedBox(width: 8),
+                                    Icon(LucideIcons.sparkles, color: Colors.white, size: 17),
+                                  ],
+                                ),
+                              ).animate().scale(duration: 400.ms, curve: Curves.easeOutBack).shimmer(duration: 1500.ms, delay: 500.ms),
+                            ] else ...[
+                              const SizedBox(height: 12),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.10),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(color: Colors.white.withValues(alpha: 0.18), width: 1),
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(LucideIcons.info, color: Colors.white70, size: 14),
+                                    SizedBox(width: 6),
+                                    Text(
+                                      '0 point (Score parfait requis)',
+                                      style: TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
                       ),
                     ),
-                  ],
+                  ),
                 ),
               ),
+            ),
 
-              // Body
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 20, 16, 100),
+            // Bottom Actions Card & Buttons (Fixed, no scroll)
+            SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.all(18),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: isWinner ? const Color(0xFFFEFCE8) : Colors.white,
                         borderRadius: BorderRadius.circular(18),
-                        border: const Border(left: BorderSide(color: _green, width: 4)),
+                        border: Border.all(
+                          color: isWinner ? const Color(0xFFFACC15) : const Color(0xFFE2E8F0),
+                          width: isWinner ? 1.5 : 1,
+                        ),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF244082).withValues(alpha: 0.08),
-                            blurRadius: 18,
+                            color: isWinner
+                                ? const Color(0xFFEAB308).withValues(alpha: 0.18)
+                                : const Color(0xFF244082).withValues(alpha: 0.08),
+                            blurRadius: 16,
                             offset: const Offset(0, 4),
                           ),
                         ],
                       ),
-                      child: const Text(
-                        '💚 Continuez à vous informer pour mieux comprendre votre santé et améliorer votre observance.',
-                        style: TextStyle(fontSize: 14, color: Color(0xFF4B6A3A), fontWeight: FontWeight.w600, height: 1.5),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              gradient: isWinner
+                                  ? const LinearGradient(
+                                      colors: [Color(0xFFF59E0B), Color(0xFFD97706)],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    )
+                                  : const LinearGradient(
+                                      colors: [_green, _greenDark],
+                                    ),
+                              borderRadius: BorderRadius.circular(14),
+                              boxShadow: isWinner
+                                  ? [
+                                      BoxShadow(
+                                        color: const Color(0xFFF59E0B).withValues(alpha: 0.35),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                            child: Icon(
+                              isWinner ? LucideIcons.award : LucideIcons.heartHandshake,
+                              color: Colors.white,
+                              size: 22,
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  isWinner
+                                      ? 'Félicitations ! Point crédité'
+                                      : 'Continuez à vous informer',
+                                  style: TextStyle(
+                                    fontSize: 14.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: isWinner ? const Color(0xFF854D0E) : const Color(0xFF163820),
+                                  ),
+                                ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  isWinner
+                                      ? 'Vous avez gagné 1 point ajouté sur votre Carte Soin pour votre bonne réponse !'
+                                      : 'Faites un sans-faute pour remporter 1 point sur votre Carte Soin.',
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w500,
+                                    color: isWinner ? const Color(0xFF92400E) : const Color(0xFF4B6A3A),
+                                    height: 1.35,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 14),
 
                     // Rejouer le quiz Button
                     SizedBox(
@@ -414,7 +585,7 @@ class _QuizScreenState extends State<QuizScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 10),
 
                     // Retour aux traitements Button
                     SizedBox(
@@ -435,8 +606,8 @@ class _QuizScreenState extends State<QuizScreen> {
                   ],
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
         bottomNavigationBar: AppBottomNavBar(
           currentIndex: 0,

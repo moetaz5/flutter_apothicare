@@ -255,101 +255,105 @@ class _AjouterDispensationScreenState extends State<AjouterDispensationScreen> {
                   topRight: Radius.circular(26),
                 ),
               ),
-              child: Column(
-                children: [
-                  Container(
-                    margin: const EdgeInsets.only(top: 12, bottom: 8),
-                    width: 44,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
-                      borderRadius: BorderRadius.circular(10),
+              child: SafeArea(
+                top: false,
+                bottom: true,
+                child: Column(
+                  children: [
+                    Container(
+                      margin: const EdgeInsets.only(top: 12, bottom: 8),
+                      width: 44,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                    child: Text(
-                      byBarcode ? 'Sélectionner un code à barre' : 'Sélectionner un médicament',
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: _navy),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                      child: Text(
+                        byBarcode ? 'Sélectionner un code à barre' : 'Sélectionner un médicament',
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: _navy),
+                      ),
                     ),
-                  ),
 
-                  // Search input
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                    child: TextField(
-                      autofocus: true,
-                      onChanged: (val) => setModalState(() => query = val),
-                      decoration: InputDecoration(
-                        hintText: 'Rechercher…',
-                        prefixIcon: const Icon(LucideIcons.search, size: 18, color: Color(0xFF9CA3AF)),
-                        filled: true,
-                        fillColor: const Color(0xFFF3F4F6),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: BorderSide.none,
+                    // Search input
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                      child: TextField(
+                        autofocus: true,
+                        onChanged: (val) => setModalState(() => query = val),
+                        decoration: InputDecoration(
+                          hintText: 'Rechercher…',
+                          prefixIcon: const Icon(LucideIcons.search, size: 18, color: Color(0xFF9CA3AF)),
+                          filled: true,
+                          fillColor: const Color(0xFFF3F4F6),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: BorderSide.none,
+                          ),
                         ),
                       ),
                     ),
-                  ),
 
-                  // List
-                  Expanded(
-                    child: filtered.isEmpty
-                        ? const Center(
-                            child: Text(
-                              'Aucun médicament trouvé.',
-                              style: TextStyle(color: Color(0xFF9CA3AF), fontWeight: FontWeight.w600),
+                    // List
+                    Expanded(
+                      child: filtered.isEmpty
+                          ? const Center(
+                              child: Text(
+                                'Aucun médicament trouvé.',
+                                style: TextStyle(color: Color(0xFF9CA3AF), fontWeight: FontWeight.w600),
+                              ),
+                            )
+                          : ListView.separated(
+                              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                              itemCount: filtered.length,
+                              separatorBuilder: (_, __) => const Divider(height: 1, color: Color(0xFFF3F4F6)),
+                              itemBuilder: (context, i) {
+                                final m = filtered[i];
+                                final isSelected = _selectedMedicament != null && _selectedMedicament['id'] == m['id'];
+                                return ListTile(
+                                  onTap: () {
+                                    setState(() {
+                                      _selectedMedicament = m;
+                                    });
+                                    Navigator.pop(ctx);
+                                  },
+                                  leading: Container(
+                                    width: 36,
+                                    height: 36,
+                                    decoration: BoxDecoration(
+                                      color: isSelected ? _green : const Color(0xFFEAF5E5),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Icon(
+                                      byBarcode ? LucideIcons.barcode : LucideIcons.pill,
+                                      color: isSelected ? Colors.white : _green,
+                                      size: 18,
+                                    ),
+                                  ),
+                                  title: Text(
+                                    m['produit']?.toString() ?? 'Médicament',
+                                    style: TextStyle(
+                                      fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                                      color: isSelected ? _navy : const Color(0xFF374151),
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    'Code: ${m['code_barre'] ?? '—'} · Dosage: ${m['dosage'] ?? '—'}',
+                                    style: const TextStyle(fontSize: 12, color: Color(0xFF9CA3AF)),
+                                  ),
+                                  trailing: isSelected
+                                      ? const Icon(LucideIcons.check, color: _green, size: 20)
+                                      : null,
+                                );
+                              },
                             ),
-                          )
-                        : ListView.separated(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            itemCount: filtered.length,
-                            separatorBuilder: (_, __) => const Divider(height: 1, color: Color(0xFFF3F4F6)),
-                            itemBuilder: (context, i) {
-                              final m = filtered[i];
-                              final isSelected = _selectedMedicament != null && _selectedMedicament['id'] == m['id'];
-                              return ListTile(
-                                onTap: () {
-                                  setState(() {
-                                    _selectedMedicament = m;
-                                  });
-                                  Navigator.pop(ctx);
-                                },
-                                leading: Container(
-                                  width: 36,
-                                  height: 36,
-                                  decoration: BoxDecoration(
-                                    color: isSelected ? _green : const Color(0xFFEAF5E5),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Icon(
-                                    byBarcode ? LucideIcons.barcode : LucideIcons.pill,
-                                    color: isSelected ? Colors.white : _green,
-                                    size: 18,
-                                  ),
-                                ),
-                                title: Text(
-                                  m['produit']?.toString() ?? 'Médicament',
-                                  style: TextStyle(
-                                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                                    color: isSelected ? _navy : const Color(0xFF374151),
-                                    fontSize: 14,
-                                  ),
-                                ),
-                                subtitle: Text(
-                                  'Code: ${m['code_barre'] ?? '—'} · Dosage: ${m['dosage'] ?? '—'}',
-                                  style: const TextStyle(fontSize: 12, color: Color(0xFF9CA3AF)),
-                                ),
-                                trailing: isSelected
-                                    ? const Icon(LucideIcons.check, color: _green, size: 20)
-                                    : null,
-                              );
-                            },
-                          ),
-                  ),
-                ],
+                    ),
+                  ],
+                ),
               ),
             );
           },

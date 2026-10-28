@@ -71,12 +71,16 @@ void main() async {
     }
   } catch (_) {}
 
-  // Set system UI style (transparent status bar with dark icons)
+  // Set system UI style (transparent status bar with dark icons & clean navigation bar)
   try {
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+        systemNavigationBarColor: Colors.white,
+        systemNavigationBarDividerColor: Colors.transparent,
+        systemNavigationBarIconBrightness: Brightness.dark,
       ),
     );
   } catch (_) {}
@@ -84,8 +88,41 @@ void main() async {
   runApp(const ApothicareApp());
 }
 
-class ApothicareApp extends StatelessWidget {
+class ApothicareApp extends StatefulWidget {
   const ApothicareApp({super.key});
+
+  @override
+  State<ApothicareApp> createState() => _ApothicareAppState();
+}
+
+class _ApothicareAppState extends State<ApothicareApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Check session validity immediately upon resuming app
+      final ctx = AppToast.navigatorKey.currentContext;
+      if (ctx != null) {
+        try {
+          final auth = ctx.read<AuthProvider>();
+          if (auth.isAuthenticated) {
+            auth.fetchUnreadNotifications();
+          }
+        } catch (_) {}
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

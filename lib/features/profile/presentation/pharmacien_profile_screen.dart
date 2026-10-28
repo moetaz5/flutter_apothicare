@@ -441,10 +441,11 @@ class _PharmacienProfileScreenState extends State<PharmacienProfileScreen> {
                               children: [
                                 if (user?.lat != null && user?.lng != null) ...[
                                   _buildGoogleMapsChip(user!.lat!, user.lng!),
-                                  const SizedBox(width: 8),
+                                  const SizedBox(width: 6),
                                 ],
                                 _buildEditButton(
                                   label: (user?.lat != null && user?.lng != null) ? 'Modifier' : 'Ajouter',
+                                  iconOnly: true,
                                   onTap: () => _openLocationEditor(user),
                                 ),
                               ],
@@ -600,42 +601,6 @@ class _PharmacienProfileScreenState extends State<PharmacienProfileScreen> {
                                     message: 'Aucun service disponible pour cet utilisateur.',
                                   ),
                           ),
-                          const SizedBox(height: 18),
-
-                          // 7. SECTION: NOTIFICATIONS & TEST
-                          _buildSectionCard(
-                            title: 'NOTIFICATIONS MOBILES',
-                            icon: LucideIcons.bell,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Vérifiez la réception des alertes système (actualités, messages, dispensations) sur votre téléphone.',
-                                  style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
-                                ),
-                                const SizedBox(height: 12),
-                                SizedBox(
-                                  width: double.infinity,
-                                  height: 46,
-                                  child: OutlinedButton.icon(
-                                    onPressed: () async {
-                                      await NotificationService.showTestNotification();
-                                      AppToast.showSuccess('Notification de test envoyée !');
-                                    },
-                                    icon: const Icon(LucideIcons.bellRing, size: 16, color: Color(0xFF71A246)),
-                                    label: const Text(
-                                      'Tester la notification système',
-                                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF163820)),
-                                    ),
-                                    style: OutlinedButton.styleFrom(
-                                      side: const BorderSide(color: Color(0xFF71A246), width: 1.5),
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
                           const SizedBox(height: 30),
                         ],
                       ),
@@ -680,35 +645,43 @@ class _PharmacienProfileScreenState extends State<PharmacienProfileScreen> {
         children: [
           // Header
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             child: Row(
               children: [
                 Container(
-                  width: 36,
-                  height: 36,
+                  width: 32,
+                  height: 32,
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
                       colors: [Color(0xFF71A246), Color(0xFF5D8A38)],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
-                    borderRadius: BorderRadius.circular(11),
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(icon, color: Colors.white, size: 18),
+                  child: Icon(icon, color: Colors.white, size: 16),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 8),
                 Expanded(
-                  child: Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF163820),
-                      letterSpacing: 0.3,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      title,
+                      maxLines: 1,
+                      style: const TextStyle(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF163820),
+                        letterSpacing: 0.2,
+                      ),
                     ),
                   ),
                 ),
-                if (trailing != null) trailing,
+                if (trailing != null) ...[
+                  const SizedBox(width: 6),
+                  trailing,
+                ],
               ],
             ),
           ),
@@ -727,31 +700,42 @@ class _PharmacienProfileScreenState extends State<PharmacienProfileScreen> {
     );
   }
 
-  Widget _buildEditButton({required VoidCallback onTap, String label = 'Modifier'}) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        decoration: BoxDecoration(
-          color: AppColors.primaryGreen.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.primaryGreen.withValues(alpha: 0.25), width: 1),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(LucideIcons.pencil, size: 12, color: AppColors.primaryGreen),
-            const SizedBox(width: 4),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 11.5,
-                fontWeight: FontWeight.w700,
-                color: AppColors.primaryGreen,
-              ),
-            ),
-          ],
+  Widget _buildEditButton({
+    required VoidCallback onTap,
+    String label = 'Modifier',
+    bool iconOnly = true,
+  }) {
+    return Tooltip(
+      message: label,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: iconOnly
+              ? const EdgeInsets.all(6.5)
+              : const EdgeInsets.symmetric(horizontal: 8, vertical: 4.5),
+          decoration: BoxDecoration(
+            color: AppColors.primaryGreen.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.primaryGreen.withValues(alpha: 0.25), width: 1),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(LucideIcons.pencil, size: 13, color: AppColors.primaryGreen),
+              if (!iconOnly) ...[
+                const SizedBox(width: 3.5),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primaryGreen,
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );
@@ -760,22 +744,22 @@ class _PharmacienProfileScreenState extends State<PharmacienProfileScreen> {
   Widget _buildGoogleMapsChip(double lat, double lng) {
     return InkWell(
       onTap: () => _openGoogleMaps(lat, lng),
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(12),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4.5),
         decoration: BoxDecoration(
           color: AppColors.primaryGreen.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12),
         ),
         child: const Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(LucideIcons.externalLink, size: 12, color: AppColors.primaryGreen),
-            SizedBox(width: 4),
+            Icon(LucideIcons.externalLink, size: 11, color: AppColors.primaryGreen),
+            SizedBox(width: 3.5),
             Text(
               'Google Maps',
               style: TextStyle(
-                fontSize: 11.5,
+                fontSize: 11,
                 fontWeight: FontWeight.w700,
                 color: AppColors.primaryGreen,
               ),
@@ -1091,7 +1075,7 @@ class _ImageEditorSheetState extends State<_ImageEditorSheet> {
         left: 20,
         right: 20,
         top: 16,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+        bottom: MediaQuery.of(context).viewInsets.bottom + MediaQuery.of(context).padding.bottom + 24,
       ),
       decoration: const BoxDecoration(
         color: Colors.white,
@@ -1579,35 +1563,39 @@ class _LocationEditorSheetState extends State<_LocationEditorSheet> {
             ),
           ),
 
-          // Save Button Bar
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, -4),
-                ),
-              ],
-            ),
-            child: SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: ElevatedButton.icon(
-                onPressed: _isSaving ? null : _handleSave,
-                icon: _isSaving
-                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : const Icon(LucideIcons.check, size: 18),
-                label: Text(
-                  _isSaving ? 'Enregistrement…' : 'Enregistrer cette position',
-                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryGreen,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          // Save Button Bar (with SafeArea for Android navigation bar)
+          SafeArea(
+            top: false,
+            bottom: true,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, -4),
+                  ),
+                ],
+              ),
+              child: SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton.icon(
+                  onPressed: _isSaving ? null : _handleSave,
+                  icon: _isSaving
+                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : const Icon(LucideIcons.check, size: 18),
+                  label: Text(
+                    _isSaving ? 'Enregistrement…' : 'Enregistrer cette position',
+                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryGreen,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
                 ),
               ),
             ),
@@ -1886,7 +1874,10 @@ class _MesInformationsEditSheetState extends State<_MesInformationsEditSheet> {
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      child: Column(
+      child: SafeArea(
+        top: false,
+        bottom: true,
+        child: Column(
         children: [
           // Drag handle
           Container(
@@ -2067,8 +2058,9 @@ class _MesInformationsEditSheetState extends State<_MesInformationsEditSheet> {
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildField(String label, String hint, TextEditingController controller, {TextInputType keyboardType = TextInputType.text}) {
     return Column(
@@ -2428,35 +2420,39 @@ class _ServicesEditSheetState extends State<_ServicesEditSheet> {
                   ),
           ),
 
-          // Save Button
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, -4),
-                ),
-              ],
-            ),
-            child: SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: ElevatedButton.icon(
-                onPressed: _isSaving ? null : _handleSave,
-                icon: _isSaving
-                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : const Icon(LucideIcons.check, size: 18),
-                label: Text(
-                  _isSaving ? 'Enregistrement…' : 'Enregistrer les services',
-                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryGreen,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          // Save Button (with SafeArea for Android navigation bar)
+          SafeArea(
+            top: false,
+            bottom: true,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, -4),
+                  ),
+                ],
+              ),
+              child: SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton.icon(
+                  onPressed: _isSaving ? null : _handleSave,
+                  icon: _isSaving
+                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : const Icon(LucideIcons.check, size: 18),
+                  label: Text(
+                    _isSaving ? 'Enregistrement…' : 'Enregistrer les services',
+                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryGreen,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
                 ),
               ),
             ),

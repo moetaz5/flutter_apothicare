@@ -37,11 +37,18 @@ class GardeProvider extends ChangeNotifier {
   }
 
   // Fetch Duty Pharmacies (Gardes) with fast caching
-  Future<void> fetchGardes({bool isNightOnly = false, bool forceRefresh = false}) async {
+  Future<void> fetchGardes({bool isNightOnly = false, bool forceRefresh = false, Position? position}) async {
+    if (position != null) {
+      _currentPosition = position;
+    }
     // If we already have data in memory and not forcing refresh, don't block
     if (_allGardes.isNotEmpty && !forceRefresh) {
-      _isLoading = false;
-      notifyListeners();
+      if (position != null) {
+        resetToProximity(limit: 20, position: position);
+      } else {
+        _isLoading = false;
+        notifyListeners();
+      }
       return;
     }
 
@@ -66,7 +73,7 @@ class GardeProvider extends ChangeNotifier {
         final rawList = response.data as List;
         final currLat = _currentPosition?.latitude;
         final currLng = _currentPosition?.longitude;
-        final hasLocation = currLat != null && currLng != null && currLat >= 30 && currLat <= 38;
+        final hasLocation = currLat != null && currLng != null && currLat != 0 && currLng != 0;
 
         final refLat = hasLocation ? currLat : 34.7406; // Default Sfax / Tunisia center
         final refLng = hasLocation ? currLng : 10.7603;
@@ -113,7 +120,7 @@ class GardeProvider extends ChangeNotifier {
           desiredAccuracy: LocationAccuracy.medium,
           timeLimit: const Duration(seconds: 4),
         );
-        if (pos.latitude >= 30 && pos.latitude <= 38) {
+        if (pos.latitude != 0 && pos.longitude != 0) {
           _currentPosition = pos;
           _recomputeDistancesAndSort();
         }
@@ -125,9 +132,7 @@ class GardeProvider extends ChangeNotifier {
     if (_currentPosition == null || _allGardes.isEmpty) return;
     final currLat = _currentPosition!.latitude;
     final currLng = _currentPosition!.longitude;
-    final isTunisia = currLat >= 30 && currLat <= 38 && currLng >= 7 && currLng <= 12.5;
-
-    if (!isTunisia) return;
+    if (currLat == 0 && currLng == 0) return;
 
     _allGardes = _allGardes.map((garde) {
       if (garde.lat != null && garde.lng != null && garde.lat != 0) {
@@ -154,7 +159,7 @@ class GardeProvider extends ChangeNotifier {
 
     final currLat = _currentPosition?.latitude;
     final currLng = _currentPosition?.longitude;
-    final hasLocation = currLat != null && currLng != null && currLat >= 30.0 && currLat <= 38.5 && currLng >= 7.0 && currLng <= 12.5;
+    final hasLocation = currLat != null && currLng != null && currLat != 0 && currLng != 0;
 
     final refLat = hasLocation ? currLat : 34.7406;
     final refLng = hasLocation ? currLng : 10.7603;

@@ -99,7 +99,7 @@ class _ListCongeScreenState extends State<ListCongeScreen> {
         builder: (modalCtx, setModalState) {
           return Container(
             padding: EdgeInsets.only(
-              bottom: MediaQuery.of(modalCtx).viewInsets.bottom + 20,
+              bottom: MediaQuery.of(modalCtx).viewInsets.bottom + MediaQuery.of(modalCtx).padding.bottom + 20,
               top: 14,
               left: 20,
               right: 20,
@@ -617,7 +617,12 @@ class _ListCongeScreenState extends State<ListCongeScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
-        padding: const EdgeInsets.only(top: 14, left: 20, right: 20, bottom: 26),
+        padding: EdgeInsets.only(
+          top: 14,
+          left: 20,
+          right: 20,
+          bottom: MediaQuery.of(ctx).padding.bottom + 26,
+        ),
         decoration: const BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
@@ -1132,32 +1137,37 @@ class _ListCongeScreenState extends State<ListCongeScreen> {
                           ),
                           InkWell(
                             onTap: _showAddCongeModal,
-                            borderRadius: BorderRadius.circular(20),
+                            borderRadius: BorderRadius.circular(22),
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9.5),
                               decoration: BoxDecoration(
                                 gradient: const LinearGradient(
                                   colors: [Color(0xFF22C55E), Color(0xFF16A34A)],
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
                                 ),
-                                borderRadius: BorderRadius.circular(20),
+                                borderRadius: BorderRadius.circular(22),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: const Color(0xFF22C55E).withValues(alpha: 0.30),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 2),
+                                    color: const Color(0xFF22C55E).withValues(alpha: 0.35),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 3),
                                   ),
                                 ],
                               ),
                               child: const Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(LucideIcons.plus, size: 15, color: Colors.white),
-                                  SizedBox(width: 4),
+                                  Icon(LucideIcons.plus, size: 18, color: Colors.white),
+                                  SizedBox(width: 6),
                                   Text(
                                     'Ajouter',
-                                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 12.5),
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 14.5,
+                                      letterSpacing: 0.2,
+                                    ),
                                   ),
                                 ],
                               ),

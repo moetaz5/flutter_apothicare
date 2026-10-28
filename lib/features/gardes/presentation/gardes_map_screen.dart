@@ -15,9 +15,7 @@ import '../../../core/utils/app_toast.dart';
 import '../../../shared/widgets/app_bottom_nav_bar.dart';
 import '../../../shared/widgets/app_loading_indicator.dart';
 import 'widgets/custom_map_marker.dart';
-import 'widgets/route_service.dart';
 import 'fiche_pharmacie_screen.dart';
-import '../../../core/services/voice_guidance_service.dart';
 
 class GardesMapScreen extends StatefulWidget {
   const GardesMapScreen({super.key});
@@ -30,7 +28,6 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
   final Completer<GoogleMapController> _mapController = Completer();
   final TextEditingController _searchController = TextEditingController();
   Timer? _debounceTimer;
-  Timer? _guidanceProgressTimer;
 
   bool _isInitialLocating = true;
   bool _isSatellite = false;
@@ -39,7 +36,6 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
   bool _filterVeterinaire = false;
   GardeModel? _selectedPharmacy;
   Set<Marker> _markers = {};
-  Set<Polyline> _polylines = {};
   bool _hasInitialFlyDone = false;
 
   LatLng _currentCameraCenter = const LatLng(34.7406, 10.7603);
@@ -50,27 +46,6 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
   LatLng? _currentUserGpsLocation;
   StreamSubscription<Position>? _userGpsStreamSub;
 
-  // In-App Itinerary & Live Navigation State
-  bool _isNavigating = false;
-  bool _isCalculatingRoute = false;
-  bool _isLiveGuiding = false; // Live Turn-by-Turn GPS Guidance Mode
-  bool _isMuted = false;
-  bool _hasAnnouncedArrival = false;
-  String _travelMode = 'driving'; // 'driving' or 'walking'
-  RouteInfo? _currentRouteInfo;
-  GardeModel? _navDestinationPharmacy;
-
-  StreamSubscription<Position>? _positionStreamSub;
-  LatLng? _liveUserPosition;
-  double _currentBearing = 0.0;
-  double _currentSpeedKmH = 0.0;
-  double _remainingDistanceMeters = 0.0;
-  int _remainingDurationMin = 0;
-  String _etaTimeStr = '';
-  int _currentStepIndex = 0;
-  List<LatLng> _fullRoutePoints = [];
-  int _lastPassedPolylineIndex = 0;
-
   static const LatLng _tunisiaDefaultLocation = LatLng(34.7406, 10.7603); // Sfax / Tunisie
   static const int _maxVisibleMarkers = 20;
 
@@ -80,135 +55,139 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await CustomMapMarkerHelper.initMarkers();
       if (!mounted) return;
+      _initLocationAndClosestPharmacies();
+    });
+  }
 
-      final provider = context.read<GardeProvider>();
+  Future<void> _initLocationAndClosestPharmacies() async {
+    setState(() {
+      _isInitialLocating = true;
+      _isAreaSearchActive = false;
+      _showSearchThisAreaButton = false;
+      _selectedPharmacy = null;
+      _filterInjection = false;
+      _filterVeterinaire = false;
+    });
+    _searchController.clear();
 
-      // 1. Get user GPS location & check permissions instantaneously without blocking
-      Position? userPos;
-      bool hasPerm = false;
-      try {
-        LocationPermission permission = await Geolocator.checkPermission();
-        if (permission == LocationPermission.denied) {
-          permission = await Geolocator.requestPermission();
-        }
-        hasPerm = permission == LocationPermission.always || permission == LocationPermission.whileInUse;
-        if (hasPerm) {
-          userPos = await Geolocator.getLastKnownPosition();
-        }
-      } catch (_) {}
+    final provider = context.read<GardeProvider>();
+    provider.setSearchQuery('');
 
-      // Asynchronously request fresh GPS fix without blocking initial render
+    // Start loading pharmacies in parallel if not loaded yet
+    final fetchFuture = provider.allGardes.isEmpty
+        ? provider.fetchGardes()
+        : Future.value();
+
+    Position? userPos;
+    bool hasPerm = false;
+
+    try {
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      hasPerm = permission == LocationPermission.always || permission == LocationPermission.whileInUse;
+
       if (hasPerm) {
-        Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high,
-          timeLimit: const Duration(seconds: 3),
-        ).then((freshPos) {
-          if (mounted) {
-            final newPos = LatLng(freshPos.latitude, freshPos.longitude);
-            _currentUserGpsLocation = newPos;
-            if (!_isNavigating) {
-              _buildMarkers(context.read<GardeProvider>().gardes);
-            }
-            if (mounted) setState(() {});
-          }
-        }).catchError((_) {});
+        // 1. Fast: try last known position first
+        userPos = await Geolocator.getLastKnownPosition();
+
+        // 2. Fresh: fetch current position with timeout
+        try {
+          final fresh = await Geolocator.getCurrentPosition(
+            desiredAccuracy: LocationAccuracy.high,
+            timeLimit: const Duration(milliseconds: 3500),
+          );
+          userPos = fresh;
+        } catch (_) {}
       }
+    } catch (_) {}
 
-      if (mounted) {
-        setState(() {
-          _hasLocationPermission = hasPerm;
-        });
-      }
+    if (!mounted) return;
 
-      LatLng targetCenter = _tunisiaDefaultLocation;
-      if (userPos != null && userPos.latitude >= 30.0 && userPos.latitude <= 38.5 && userPos.longitude >= 7.0 && userPos.longitude <= 12.5) {
-        targetCenter = LatLng(userPos.latitude, userPos.longitude);
-        _currentUserGpsLocation = targetCenter;
-      }
+    setState(() {
+      _hasLocationPermission = hasPerm;
+    });
 
-      _currentCameraCenter = targetCenter;
-      _lastSearchedCenter = targetCenter;
+    // Start live GPS tracking stream
+    if (hasPerm) {
+      _userGpsStreamSub?.cancel();
+      _userGpsStreamSub = Geolocator.getPositionStream(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          distanceFilter: 3,
+        ),
+      ).listen((pos) {
+        if (!mounted) return;
+        final newPos = LatLng(pos.latitude, pos.longitude);
+        final wasNull = _currentUserGpsLocation == null;
+        _currentUserGpsLocation = newPos;
 
-      // Start live GPS tracking stream
-      if (hasPerm) {
-        _userGpsStreamSub = Geolocator.getPositionStream(
-          locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.high,
-            distanceFilter: 2,
+        if (wasNull) {
+          _currentCameraCenter = newPos;
+          provider.resetToProximity(limit: 20, position: pos);
+          _buildMarkers(provider.gardes, isProximityOnly: true);
+          _animateToLocation(newPos.latitude, newPos.longitude, zoom: 15.5);
+        } else {
+          _buildMarkers(provider.gardes);
+        }
+        setState(() {});
+      });
+    }
+
+    // Wait for pharmacies to be loaded
+    await fetchFuture;
+    if (!mounted) return;
+
+    LatLng targetCenter = _tunisiaDefaultLocation;
+    if (userPos != null) {
+      targetCenter = LatLng(userPos.latitude, userPos.longitude);
+      _currentUserGpsLocation = targetCenter;
+    } else if (provider.currentPosition != null) {
+      targetCenter = LatLng(provider.currentPosition!.latitude, provider.currentPosition!.longitude);
+      _currentUserGpsLocation = targetCenter;
+    }
+
+    _currentCameraCenter = targetCenter;
+    _lastSearchedCenter = targetCenter;
+
+    // Reset and compute the 20 closest pharmacies to the user
+    provider.resetToProximity(limit: 20, position: userPos);
+
+    if (!mounted) return;
+
+    _buildMarkers(provider.gardes, isProximityOnly: true);
+
+    try {
+      final controller = await _mapController.future;
+      await controller.animateCamera(
+        CameraUpdate.newCameraPosition(
+          CameraPosition(
+            target: targetCenter,
+            zoom: 15.5,
           ),
-        ).listen((pos) {
-          if (pos.latitude >= 30.0 && pos.latitude <= 38.5 && pos.longitude >= 7.0 && pos.longitude <= 12.5 && mounted) {
-            final newPos = LatLng(pos.latitude, pos.longitude);
-            _currentUserGpsLocation = newPos;
-            if (_isNavigating && !_isLiveGuiding) {
-              _updateRouteProgress(newPos, speed: pos.speed, heading: pos.heading);
-            }
-            if (!_isNavigating) {
-              _buildMarkers(context.read<GardeProvider>().gardes);
-            }
-            setState(() {});
-          }
-        });
-      }
+        ),
+      );
+    } catch (_) {}
 
-      // 2. Load or reset to user proximity (always 20 closest)
-      if (provider.allGardes.isNotEmpty) {
-        provider.resetToProximity(limit: 20, position: userPos);
-      } else {
-        await provider.fetchGardes();
-      }
-
-      if (!mounted) return;
-
-      _buildMarkers(provider.gardes, isProximityOnly: true);
-
-      try {
-        final controller = await _mapController.future;
-        await controller.animateCamera(
-          CameraUpdate.newCameraPosition(
-            CameraPosition(
-              target: targetCenter,
-              zoom: 15.5,
-            ),
-          ),
-        );
-      } catch (_) {}
-
+    if (mounted) {
       setState(() {
         _isInitialLocating = false;
         _hasInitialFlyDone = true;
-        _hasLocationPermission = hasPerm;
       });
-    });
+    }
   }
 
   @override
   void dispose() {
-    VoiceGuidanceService().stop();
     _debounceTimer?.cancel();
-    _guidanceProgressTimer?.cancel();
     _searchController.dispose();
-    _positionStreamSub?.cancel();
     _userGpsStreamSub?.cancel();
     super.dispose();
   }
 
   void _syncMarkersAndLocation(GardeProvider provider) {
     _buildMarkers(provider.gardes, isProximityOnly: !_isAreaSearchActive);
-
-    if (provider.gardes.isNotEmpty && !_hasInitialFlyDone) {
-      final firstValid = provider.gardes.firstWhere(
-        (p) => p.lat != null && p.lng != null && p.lat != 0,
-        orElse: () => provider.gardes.first,
-      );
-
-      if (firstValid.lat != null && firstValid.lng != null && firstValid.lat != 0) {
-        _hasInitialFlyDone = true;
-        _currentCameraCenter = LatLng(firstValid.lat!, firstValid.lng!);
-        _lastSearchedCenter = _currentCameraCenter;
-        _animateToLocation(firstValid.lat!, firstValid.lng!, zoom: 15.2);
-      }
-    }
   }
 
   void _onSearchChanged(String val) {
@@ -222,6 +201,7 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
   }
 
   void _onSearchSubmitted(String val) {
+    FocusScope.of(context).unfocus();
     _debounceTimer?.cancel();
     if (!mounted) return;
     final provider = context.read<GardeProvider>();
@@ -240,8 +220,6 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
   void _onCameraMove(CameraPosition position) {
     _currentCameraCenter = position.target;
 
-    if (_isNavigating || _isLiveGuiding) return;
-
     final double dist = _calculateDistanceKm(
       _lastSearchedCenter.latitude,
       _lastSearchedCenter.longitude,
@@ -257,8 +235,6 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
   }
 
   void _onCameraIdle() {
-    if (_isNavigating || _isLiveGuiding) return;
-
     final double dist = _calculateDistanceKm(
       _lastSearchedCenter.latitude,
       _lastSearchedCenter.longitude,
@@ -274,6 +250,7 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
   }
 
   Future<void> _searchInThisArea() async {
+    FocusScope.of(context).unfocus();
     final provider = context.read<GardeProvider>();
     _isAreaSearchActive = true;
     try {
@@ -344,35 +321,6 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
       );
     }
 
-    // ─── ITINERARY & LIVE GUIDANCE: ONLY SHOW DESTINATION PHARMACY ───
-    if ((_isNavigating || _isLiveGuiding) && _navDestinationPharmacy != null) {
-      final ph = _navDestinationPharmacy!;
-      if (ph.lat != null && ph.lng != null && ph.lat != 0 && ph.lng != 0) {
-        final isNight = ph.typeGarde?.toLowerCase().contains('nuit') ?? false;
-        final BitmapDescriptor icon = CustomMapMarkerHelper.selectedMarker ??
-            (isNight
-                ? (CustomMapMarkerHelper.nightMarker ?? BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueViolet))
-                : (CustomMapMarkerHelper.dayMarker ?? BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen)));
-
-        newMarkers.add(
-          Marker(
-            markerId: MarkerId('dest_${ph.id ?? "${ph.lat}_${ph.lng}"}'),
-            position: LatLng(ph.lat!, ph.lng!),
-            icon: icon,
-            infoWindow: InfoWindow(
-              title: ph.nomPharmacie ?? 'Pharmacie',
-              snippet: '${ph.typeGarde ?? "Garde"} • ${ph.adresse ?? ""}',
-            ),
-          ),
-        );
-      }
-
-      setState(() {
-        _markers = newMarkers;
-      });
-      return;
-    }
-
     // ─── SERVICE FILTERING (Injection / Vétérinaire) ───
     final provider = context.read<GardeProvider>();
     final bool hasServiceFilter = _filterInjection || _filterVeterinaire;
@@ -438,6 +386,7 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
               snippet: '${ph.typeGarde ?? "Garde"} • ${ph.adresse ?? ""}',
             ),
             onTap: () {
+              FocusScope.of(context).unfocus();
               setState(() {
                 _selectedPharmacy = ph;
               });
@@ -507,23 +456,23 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
       }
 
       LatLng targetPos;
-      if (pos != null && pos.latitude >= 30.0 && pos.latitude <= 38.5 && pos.longitude >= 7.0 && pos.longitude <= 12.5) {
+      if (pos != null) {
         targetPos = LatLng(pos.latitude, pos.longitude);
-      } else if (_isNavigating && _currentRouteInfo != null && _currentRouteInfo!.points.isNotEmpty) {
-        targetPos = _currentRouteInfo!.points.first;
+        _currentUserGpsLocation = targetPos;
       } else {
         if (!mounted) return;
         final provider = context.read<GardeProvider>();
         final curr = provider.currentPosition;
-        if (curr != null && curr.latitude >= 30.0 && curr.latitude <= 38.5 && curr.longitude >= 7.0 && curr.longitude <= 12.5) {
+        if (curr != null) {
           targetPos = LatLng(curr.latitude, curr.longitude);
+          _currentUserGpsLocation = targetPos;
         } else {
           targetPos = _tunisiaDefaultLocation;
         }
       }
 
       _currentCameraCenter = targetPos;
-      if (!_isNavigating && !_isLiveGuiding && mounted) {
+      if (mounted) {
         setState(() {
           _isAreaSearchActive = false;
           _showSearchThisAreaButton = false;
@@ -538,418 +487,16 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
         CameraUpdate.newCameraPosition(
           CameraPosition(
             target: targetPos,
-            zoom: _isNavigating ? 17.5 : 16.5,
+            zoom: 16.5,
             tilt: 0,
             bearing: 0,
           ),
         ),
       );
-    } catch (_) {
-      if (_currentRouteInfo != null && _currentRouteInfo!.points.isNotEmpty) {
-        final controller = await _mapController.future;
-        await controller.animateCamera(
-          CameraUpdate.newLatLngZoom(_currentRouteInfo!.points.first, 17.0),
-        );
-      }
-    }
-  }
-
-  Future<void> _fitRouteOverview() async {
-    if (_currentRouteInfo != null && _currentRouteInfo!.points.isNotEmpty) {
-      final bounds = InAppRouteService.createBounds(_currentRouteInfo!.points);
-      final controller = await _mapController.future;
-      controller.animateCamera(CameraUpdate.newLatLngBounds(bounds, 80));
-    }
-  }
-
-  // ─── IN-APP ITINERARY CALCULATION ───
-  Future<void> _startInAppRoute(GardeModel ph) async {
-    if (ph.lat == null || ph.lng == null || ph.lat == 0) return;
-
-    setState(() {
-      _isListView = false;
-      _isCalculatingRoute = true;
-      _navDestinationPharmacy = ph;
-      _selectedPharmacy = ph;
-    });
-
-    final provider = context.read<GardeProvider>();
-    LatLng origin;
-    final curr = provider.currentPosition;
-    final isTunisia = curr != null && curr.latitude >= 30.0 && curr.latitude <= 38.5 && curr.longitude >= 7.0 && curr.longitude <= 12.5;
-
-    if (_currentUserGpsLocation != null) {
-      origin = _currentUserGpsLocation!;
-    } else if (isTunisia) {
-      origin = LatLng(curr.latitude, curr.longitude);
-    } else {
-      origin = LatLng(ph.lat! + 0.008, ph.lng! - 0.009);
-    }
-
-    final LatLng destination = LatLng(ph.lat!, ph.lng!);
-
-    final routeInfo = await InAppRouteService.calculateRoute(
-      origin: origin,
-      destination: destination,
-      profile: _travelMode,
-    );
-
-    if (!mounted) return;
-
-    if (routeInfo != null && routeInfo.points.isNotEmpty) {
-      final Set<Polyline> newPolylines = {
-        // Drop shadow polyline for 3D depth
-        Polyline(
-          polylineId: const PolylineId('route_shadow'),
-          points: routeInfo.points,
-          color: const Color(0xFF1E3A8A).withValues(alpha: 0.35),
-          width: 8,
-          jointType: JointType.round,
-          endCap: Cap.roundCap,
-          startCap: Cap.roundCap,
-        ),
-        // Active route polyline (Google Maps vibrant blue)
-        Polyline(
-          polylineId: const PolylineId('route_active'),
-          points: routeInfo.points,
-          color: const Color(0xFF2563EB),
-          width: 5,
-          jointType: JointType.round,
-          endCap: Cap.roundCap,
-          startCap: Cap.roundCap,
-        ),
-      };
-
-      setState(() {
-        _isNavigating = true;
-        _isCalculatingRoute = false;
-        _currentRouteInfo = routeInfo;
-        _fullRoutePoints = List<LatLng>.from(routeInfo.points);
-        _lastPassedPolylineIndex = 0;
-        _polylines = newPolylines;
-        _remainingDistanceMeters = routeInfo.distanceKm * 1000.0;
-        _remainingDurationMin = routeInfo.durationMinutes;
-        final eta = DateTime.now().add(Duration(minutes: _remainingDurationMin));
-        _etaTimeStr = '${eta.hour.toString().padLeft(2, '0')}:${eta.minute.toString().padLeft(2, '0')}';
-      });
-
-      _buildMarkers(provider.gardes);
-
-      try {
-        final bounds = InAppRouteService.createBounds(routeInfo.points);
-        final controller = await _mapController.future;
-        controller.animateCamera(CameraUpdate.newLatLngBounds(bounds, 90));
-      } catch (_) {}
-    } else {
-      setState(() {
-        _isCalculatingRoute = false;
-      });
-      if (mounted) {
-        AppToast.showError('Impossible de calculer l\'itinéraire.', context);
-      }
-    }
-  }
-
-  // ─── LIVE TURN-BY-TURN GUIDANCE WITH BEARING & TILT ───
-  Future<void> _startLiveNavigation() async {
-    if (_currentRouteInfo == null || _currentRouteInfo!.points.isEmpty || _navDestinationPharmacy == null) return;
-
-    final provider = context.read<GardeProvider>();
-    LatLng startPos;
-    final curr = provider.currentPosition;
-    final isTunisia = curr != null && curr.latitude >= 30.0 && curr.latitude <= 38.5 && curr.longitude >= 7.0 && curr.longitude <= 12.5;
-
-    if (_currentUserGpsLocation != null) {
-      startPos = _currentUserGpsLocation!;
-    } else if (isTunisia) {
-      startPos = LatLng(curr.latitude, curr.longitude);
-    } else {
-      startPos = _currentRouteInfo!.points.first;
-    }
-
-    _liveUserPosition = startPos;
-
-    // Calculate initial bearing towards second point on route
-    if (_currentRouteInfo!.points.length > 1) {
-      _currentBearing = InAppRouteService.calculateBearing(startPos, _currentRouteInfo!.points[1]);
-    } else {
-      _currentBearing = 0.0;
-    }
-
-    double initialDistMeters = _currentRouteInfo!.distanceKm * 1000.0;
-    if (initialDistMeters <= 0 && _navDestinationPharmacy?.lat != null && _navDestinationPharmacy?.lng != null) {
-      final destPos = LatLng(_navDestinationPharmacy!.lat!, _navDestinationPharmacy!.lng!);
-      initialDistMeters = _calculateDistanceKm(startPos.latitude, startPos.longitude, destPos.latitude, destPos.longitude) * 1000.0;
-    }
-
-    final int initialDurationMin = _currentRouteInfo!.durationMinutes > 0
-        ? _currentRouteInfo!.durationMinutes
-        : (_travelMode == 'driving' ? (initialDistMeters / 450.0) : (initialDistMeters / 80.0)).ceil().clamp(1, 999);
-    final eta = DateTime.now().add(Duration(minutes: initialDurationMin));
-
-    setState(() {
-      _isLiveGuiding = true;
-      _currentStepIndex = 0;
-      _remainingDistanceMeters = initialDistMeters;
-      _remainingDurationMin = initialDurationMin;
-      _etaTimeStr = '${eta.hour.toString().padLeft(2, '0')}:${eta.minute.toString().padLeft(2, '0')}';
-      _currentSpeedKmH = 0.0;
-      _hasAnnouncedArrival = false;
-    });
-
-    VoiceGuidanceService().setMuted(_isMuted);
-    if (!_isMuted) {
-      if (_currentRouteInfo != null && _currentRouteInfo!.stepDetails.isNotEmpty) {
-        final firstStep = _currentRouteInfo!.stepDetails.first;
-        VoiceGuidanceService().speak(firstStep.instruction, force: true);
-      } else {
-        final destName = _navDestinationPharmacy?.nomPharmacie ?? 'votre destination';
-        VoiceGuidanceService().speak('Départ vers $destName', force: true);
-      }
-    }
-
-    _buildMarkers(provider.gardes);
-
-    // 3D driver perspective: zoom 18.5, tilt 50°, bearing aligned with road
-    try {
-      final controller = await _mapController.future;
-      await controller.animateCamera(
-        CameraUpdate.newCameraPosition(
-          CameraPosition(
-            target: startPos,
-            zoom: 18.5,
-            tilt: 50.0,
-            bearing: _currentBearing,
-          ),
-        ),
-      );
-    } catch (_) {}
-
-    // Listen to real-world GPS stream (only updates when user physically moves)
-    _positionStreamSub?.cancel();
-    try {
-      _positionStreamSub = Geolocator.getPositionStream(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.bestForNavigation,
-          distanceFilter: 2,
-        ),
-      ).listen((Position pos) {
-        if (pos.latitude >= 30.0 && pos.latitude <= 38.5 && pos.longitude >= 7.0 && pos.longitude <= 12.5) {
-          _onLiveLocationUpdate(pos);
-        }
-      });
     } catch (_) {}
   }
 
-  void _onLiveLocationUpdate(Position pos) async {
-    if (!_isLiveGuiding || !mounted) return;
-
-    final newPos = LatLng(pos.latitude, pos.longitude);
-    _updateRouteProgress(newPos, speed: pos.speed, heading: pos.heading);
-
-    try {
-      final controller = await _mapController.future;
-      await controller.animateCamera(
-        CameraUpdate.newCameraPosition(
-          CameraPosition(
-            target: newPos,
-            zoom: 18.5,
-            tilt: 50.0,
-            bearing: _currentBearing,
-          ),
-        ),
-      );
-    } catch (_) {}
-
-    if (mounted) setState(() {});
-  }
-
-  void _updateRouteProgress(LatLng newPos, {double? speed, double? heading}) {
-    if (!_isNavigating || _fullRoutePoints.isEmpty || _navDestinationPharmacy == null) return;
-
-    _liveUserPosition = newPos;
-    if (speed != null) {
-      _currentSpeedKmH = (speed * 3.6).clamp(0.0, 160.0);
-    }
-
-    if (heading != null && heading > 0 && heading <= 360) {
-      _currentBearing = heading;
-    }
-
-    // Find closest point index on _fullRoutePoints from current progress forward
-    int closestIdx = _lastPassedPolylineIndex;
-    double minDist = double.infinity;
-    for (int i = _lastPassedPolylineIndex; i < _fullRoutePoints.length; i++) {
-      final d = _calculateDistanceKm(newPos.latitude, newPos.longitude, _fullRoutePoints[i].latitude, _fullRoutePoints[i].longitude) * 1000.0;
-      if (d < minDist) {
-        minDist = d;
-        closestIdx = i;
-      }
-    }
-    _lastPassedPolylineIndex = closestIdx;
-
-    // Slice remaining polyline points from current user position to destination
-    final List<LatLng> remainingPoints = [newPos];
-    if (_lastPassedPolylineIndex + 1 < _fullRoutePoints.length) {
-      remainingPoints.addAll(_fullRoutePoints.sublist(_lastPassedPolylineIndex + 1));
-    } else if (_navDestinationPharmacy?.lat != null && _navDestinationPharmacy?.lng != null) {
-      remainingPoints.add(LatLng(_navDestinationPharmacy!.lat!, _navDestinationPharmacy!.lng!));
-    }
-
-    if ((heading == null || heading <= 0) && remainingPoints.length > 1) {
-      _currentBearing = InAppRouteService.calculateBearing(newPos, remainingPoints[1]);
-    }
-
-    // Calculate total remaining distance in meters along the path
-    double distAlongPoints = 0.0;
-    for (int i = 0; i < remainingPoints.length - 1; i++) {
-      distAlongPoints += _calculateDistanceKm(
-        remainingPoints[i].latitude,
-        remainingPoints[i].longitude,
-        remainingPoints[i + 1].latitude,
-        remainingPoints[i + 1].longitude,
-      ) * 1000.0;
-    }
-
-    final destPos = LatLng(_navDestinationPharmacy!.lat!, _navDestinationPharmacy!.lng!);
-    final directDistToDest = _calculateDistanceKm(newPos.latitude, newPos.longitude, destPos.latitude, destPos.longitude) * 1000.0;
-    final totalRemainingMeters = directDistToDest < 30 ? directDistToDest : (distAlongPoints > 0 ? distAlongPoints : directDistToDest);
-
-    _remainingDistanceMeters = totalRemainingMeters;
-
-    // Calculate remaining duration down to 0 min at destination
-    if (totalRemainingMeters <= 25) {
-      _remainingDurationMin = 0;
-      if (_isLiveGuiding && !_hasAnnouncedArrival) {
-        _hasAnnouncedArrival = true;
-        AppToast.showSuccess('🎉 Vous êtes arrivé à la pharmacie !', context);
-        final pharmacyName = _navDestinationPharmacy?.nomPharmacie ?? '';
-        VoiceGuidanceService().speak(
-          pharmacyName.isNotEmpty
-              ? 'Vous êtes arrivé à la pharmacie $pharmacyName.'
-              : 'Vous êtes arrivé à destination.',
-          force: true,
-        );
-      }
-    } else {
-      _remainingDurationMin = (_travelMode == 'driving'
-          ? (totalRemainingMeters / 450.0).ceil()
-          : (totalRemainingMeters / 80.0).ceil()).clamp(1, 999);
-    }
-
-    final eta = DateTime.now().add(Duration(minutes: _remainingDurationMin));
-    _etaTimeStr = '${eta.hour.toString().padLeft(2, '0')}:${eta.minute.toString().padLeft(2, '0')}';
-
-    // Update dynamic trimmed polyline (blue route line shrinks as user moves)
-    _polylines = {
-      Polyline(
-        polylineId: const PolylineId('route_shadow'),
-        points: remainingPoints,
-        color: const Color(0xFF1E3A8A).withValues(alpha: 0.35),
-        width: 8,
-        jointType: JointType.round,
-        endCap: Cap.roundCap,
-        startCap: Cap.roundCap,
-      ),
-      Polyline(
-        polylineId: const PolylineId('route_active'),
-        points: remainingPoints,
-        color: const Color(0xFF2563EB),
-        width: 5,
-        jointType: JointType.round,
-        endCap: Cap.roundCap,
-        startCap: Cap.roundCap,
-      ),
-    };
-
-    _updateActiveStep(newPos);
-  }
-
-  void _updateActiveStep(LatLng userPos) {
-    if (_currentRouteInfo == null || _currentRouteInfo!.stepDetails.isEmpty) return;
-    for (int i = _currentStepIndex; i < _currentRouteInfo!.stepDetails.length; i++) {
-      final step = _currentRouteInfo!.stepDetails[i];
-      final d = _calculateDistanceKm(userPos.latitude, userPos.longitude, step.location.latitude, step.location.longitude) * 1000.0;
-      if (d < 40 && i + 1 < _currentRouteInfo!.stepDetails.length) {
-        final newIndex = i + 1;
-        if (newIndex != _currentStepIndex) {
-          _currentStepIndex = newIndex;
-          if (_isLiveGuiding && !_isMuted) {
-            final nextStep = _currentRouteInfo!.stepDetails[_currentStepIndex];
-            VoiceGuidanceService().speak(nextStep.instruction);
-          }
-        }
-        break;
-      }
-    }
-  }
-
-  Future<void> _recenterLiveNavigation() async {
-    final target = _liveUserPosition ??
-        (_currentRouteInfo != null && _currentRouteInfo!.points.isNotEmpty
-            ? _currentRouteInfo!.points.first
-            : null);
-    if (target == null) return;
-    try {
-      final controller = await _mapController.future;
-      await controller.animateCamera(
-        CameraUpdate.newCameraPosition(
-          CameraPosition(
-            target: target,
-            zoom: 18.5,
-            tilt: 50.0,
-            bearing: _currentBearing,
-          ),
-        ),
-      );
-    } catch (_) {}
-  }
-
-  void _stopLiveGuiding() async {
-    VoiceGuidanceService().stop();
-    _positionStreamSub?.cancel();
-    _positionStreamSub = null;
-    _guidanceProgressTimer?.cancel();
-    _guidanceProgressTimer = null;
-    setState(() {
-      _isLiveGuiding = false;
-    });
-
-    if (_currentRouteInfo != null && _currentRouteInfo!.points.isNotEmpty) {
-      final bounds = InAppRouteService.createBounds(_currentRouteInfo!.points);
-      final controller = await _mapController.future;
-      controller.animateCamera(CameraUpdate.newLatLngBounds(bounds, 90));
-    }
-  }
-
-  void _exitInAppRoute() {
-    VoiceGuidanceService().stop();
-    _positionStreamSub?.cancel();
-    _positionStreamSub = null;
-    _guidanceProgressTimer?.cancel();
-    _guidanceProgressTimer = null;
-    setState(() {
-      _isNavigating = false;
-      _isLiveGuiding = false;
-      _currentRouteInfo = null;
-      _fullRoutePoints = [];
-      _lastPassedPolylineIndex = 0;
-      _navDestinationPharmacy = null;
-      _polylines = {};
-      _selectedPharmacy = null;
-    });
-    _buildMarkers(context.read<GardeProvider>().gardes);
-  }
-
-  void _toggleTravelMode(String mode) {
-    if (_travelMode == mode) return;
-    setState(() {
-      _travelMode = mode;
-    });
-    if (_navDestinationPharmacy != null) {
-      _startInAppRoute(_navDestinationPharmacy!);
-    }
-  }
+  
 
   void _callPharmacy(String? phone) async {
     if (phone == null || phone.trim().isEmpty) return;
@@ -959,13 +506,31 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
     }
   }
 
-  void _openExternalGps(GardeModel? garde) async {
-    if (garde?.lat == null || garde?.lng == null) return;
-    final Uri uri = Uri.parse(
-      'https://www.google.com/maps/dir/?api=1&destination=${garde!.lat},${garde.lng}',
-    );
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+  Future<void> _openGoogleMapsRoute(GardeModel ph) async {
+    final lat = ph.lat;
+    final lng = ph.lng;
+    if (lat == null || lng == null || lat == 0 || lng == 0) {
+      if (mounted) {
+        AppToast.showError('Coordonnées GPS de cette pharmacie non disponibles.', context);
+      }
+      return;
+    }
+
+    final Uri uri = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$lng&dir_action=navigate');
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        await launchUrl(uri);
+      }
+    } catch (_) {
+      try {
+        await launchUrl(uri);
+      } catch (_) {
+        if (mounted) {
+          AppToast.showError('Impossible d\'ouvrir Google Maps.', context);
+        }
+      }
     }
   }
 
@@ -1043,50 +608,67 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
     final isAuth = context.watch<AuthProvider>().isAuthenticated;
     final bottomInset = isAuth ? 0.0 : MediaQuery.of(context).padding.bottom;
 
-    final initialTarget = (provider.gardes.isNotEmpty && provider.gardes.first.lat != null && provider.gardes.first.lat != 0)
-        ? LatLng(provider.gardes.first.lat!, provider.gardes.first.lng!)
-        : _tunisiaDefaultLocation;
+    final initialTarget = _currentUserGpsLocation ??
+        (provider.currentPosition != null
+            ? LatLng(provider.currentPosition!.latitude, provider.currentPosition!.longitude)
+            : _tunisiaDefaultLocation);
 
-    return Scaffold(
-      backgroundColor: AppColors.scaffoldBackground,
-      body: Stack(
-        children: [
-          // ─── HARDWARE-ACCELERATED MAP VIEW ───
-          if (!_isListView)
-            Positioned.fill(
-              child: GoogleMap(
-                initialCameraPosition: CameraPosition(
-                  target: initialTarget,
-                  zoom: 15.0,
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Scaffold(
+        backgroundColor: AppColors.scaffoldBackground,
+        body: Stack(
+          children: [
+            // ─── HARDWARE-ACCELERATED MAP VIEW ───
+            if (!_isListView)
+              Positioned.fill(
+                child: GoogleMap(
+                  initialCameraPosition: CameraPosition(
+                    target: initialTarget,
+                    zoom: 15.0,
+                  ),
+                  mapType: _isSatellite ? MapType.hybrid : MapType.normal,
+                  myLocationEnabled: _hasLocationPermission,
+                  myLocationButtonEnabled: false,
+                  zoomControlsEnabled: false,
+                  mapToolbarEnabled: false,
+                  compassEnabled: true,
+                  rotateGesturesEnabled: true,
+                  tiltGesturesEnabled: true,
+                  markers: _markers,
+                  onCameraMoveStarted: () {
+                    FocusScope.of(context).unfocus();
+                  },
+                  onCameraMove: _onCameraMove,
+                  onCameraIdle: _onCameraIdle,
+                  onTap: (pos) {
+                    FocusScope.of(context).unfocus();
+                    if (_selectedPharmacy != null) {
+                      setState(() {
+                        _selectedPharmacy = null;
+                      });
+                      _buildMarkers(provider.gardes);
+                    }
+                  },
+                  onMapCreated: (controller) {
+                    if (!_mapController.isCompleted) {
+                      _mapController.complete(controller);
+                    }
+                    if (_currentUserGpsLocation != null) {
+                      controller.animateCamera(
+                        CameraUpdate.newCameraPosition(
+                          CameraPosition(
+                            target: _currentUserGpsLocation!,
+                            zoom: 15.5,
+                          ),
+                        ),
+                      );
+                    }
+                    _syncMarkersAndLocation(provider);
+                  },
                 ),
-                mapType: _isSatellite ? MapType.hybrid : MapType.normal,
-                myLocationEnabled: _hasLocationPermission,
-                myLocationButtonEnabled: false,
-                zoomControlsEnabled: false,
-                mapToolbarEnabled: false,
-                compassEnabled: !_isLiveGuiding,
-                rotateGesturesEnabled: true,
-                tiltGesturesEnabled: true,
-                markers: _markers,
-                polylines: _polylines,
-                onCameraMove: _onCameraMove,
-                onCameraIdle: _onCameraIdle,
-                onTap: (pos) {
-                  if (!_isNavigating && !_isLiveGuiding && _selectedPharmacy != null) {
-                    setState(() {
-                      _selectedPharmacy = null;
-                    });
-                    _buildMarkers(provider.gardes);
-                  }
-                },
-                onMapCreated: (controller) {
-                  if (!_mapController.isCompleted) {
-                    _mapController.complete(controller);
-                  }
-                  _syncMarkersAndLocation(provider);
-                },
-              ),
-            )
+              )
           else
             // ─── LIST VIEW ALTERNATIVE ───
             Positioned.fill(
@@ -1118,6 +700,7 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
                             }).take(_maxVisibleMarkers).toList();
 
                             return ListView.separated(
+                              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                               padding: EdgeInsets.fromLTRB(16, 14, 16, 14 + bottomInset),
                               itemCount: listFiltered.length,
                               separatorBuilder: (ctx, i) => const SizedBox(height: 12),
@@ -1130,30 +713,18 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
                         ),
             ),
 
-          // ─── TOP BAR: LIVE GUIDANCE BANNER OR ROUTE HEADER OR NORMAL HEADER ───
-          if (_isLiveGuiding && _navDestinationPharmacy != null)
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: RepaintBoundary(
-                child: _buildLiveNavigationTopBanner(topPadding),
-              ),
-            )
-          else
-            Positioned(
-              top: topPadding + 6,
-              left: 10,
-              right: 10,
-              child: RepaintBoundary(
-                child: _isNavigating && _navDestinationPharmacy != null
-                    ? _buildInAppRouteHeader()
-                    : _buildNormalHeader(provider),
-              ),
+          // ─── TOP BAR: NORMAL HEADER ───
+          Positioned(
+            top: topPadding + 6,
+            left: 10,
+            right: 10,
+            child: RepaintBoundary(
+              child: _buildNormalHeader(provider),
             ),
+          ),
 
           // ─── FLOATING "RECHERCHER DANS CETTE ZONE" BUTTON ───
-          if (!_isListView && !_isNavigating && !_isLiveGuiding && _showSearchThisAreaButton)
+          if (!_isListView && _showSearchThisAreaButton)
             Positioned(
               top: topPadding + 112,
               left: 0,
@@ -1196,144 +767,24 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
               ),
             ),
 
-          // ─── LIVE GUIDANCE RIGHT SIDE CONTROLS (Google Maps Style) ───
-          if (_isLiveGuiding) ...[
+          // ─── USER LOCATION BUTTON (Bottom Left) ───
+          if (!_isListView)
             Positioned(
-              right: 16,
-              top: topPadding + 140,
-              child: Column(
-                children: [
-                  _buildLiveActionCircle(
-                    icon: LucideIcons.compass,
-                    iconColor: Colors.redAccent,
-                    onTap: _recenterLiveNavigation,
-                  ),
-                  const SizedBox(height: 10),
-                  _buildLiveActionCircle(
-                    icon: LucideIcons.globe,
-                    iconColor: _isSatellite ? Colors.white : AppColors.forestGreen,
-                    bgColor: _isSatellite ? AppColors.forestGreen : Colors.white,
-                    onTap: () => setState(() => _isSatellite = !_isSatellite),
-                  ),
-                  const SizedBox(height: 10),
-                  _buildLiveActionCircle(
-                    icon: _isMuted ? LucideIcons.volumeX : LucideIcons.volume2,
-                    iconColor: _isMuted ? Colors.redAccent : AppColors.forestGreen,
-                    onTap: () {
-                      setState(() => _isMuted = !_isMuted);
-                      VoiceGuidanceService().setMuted(_isMuted);
-                      if (!_isMuted && _isLiveGuiding) {
-                        if (_currentRouteInfo != null &&
-                            _currentRouteInfo!.stepDetails.isNotEmpty &&
-                            _currentStepIndex < _currentRouteInfo!.stepDetails.length) {
-                          VoiceGuidanceService().speak(
-                            _currentRouteInfo!.stepDetails[_currentStepIndex].instruction,
-                            force: true,
-                          );
-                        }
-                      }
-                    },
-                  ),
-                ],
-              ),
-            ),
-            Positioned(
-              bottom: 100,
-              left: 16,
-              child: Container(
-                width: 54,
-                height: 54,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.18),
-                      blurRadius: 10,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      _currentSpeedKmH > 1 ? '${_currentSpeedKmH.toInt()}' : '--',
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.forestGreen,
-                      ),
-                    ),
-                    const Text(
-                      'km/h',
-                      style: TextStyle(fontSize: 9.0, fontWeight: FontWeight.w700, color: AppColors.textSecondary),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-
-          // ─── USER LOCATION & OVERVIEW BUTTONS (Bottom Left) ───
-          if (!_isListView && !_isLiveGuiding)
-            Positioned(
-              bottom: (_isNavigating || _selectedPharmacy != null) ? (295 + bottomInset) : (16 + bottomInset),
+              bottom: _selectedPharmacy != null ? (295 + bottomInset) : (16 + bottomInset),
               left: 14,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Full Route Overview button (in navigation mode)
-                  if (_isNavigating) ...[
-                    FloatingActionButton.small(
-                      heroTag: 'fab_fit_route',
-                      onPressed: _fitRouteOverview,
-                      backgroundColor: Colors.white,
-                      foregroundColor: AppColors.forestGreen,
-                      elevation: 4,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      child: const Icon(LucideIcons.maximize2, size: 20),
-                    ),
-                    const SizedBox(height: 10),
-                  ],
-                  // User Location Target button
-                  FloatingActionButton.small(
-                    heroTag: 'fab_user_location',
-                    onPressed: _flyToUserLocation,
-                    backgroundColor: Colors.white,
-                    foregroundColor: _isNavigating ? const Color(0xFF2563EB) : AppColors.forestGreen,
-                    elevation: 4,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    child: const Icon(LucideIcons.crosshair, size: 20),
-                  ),
-                ],
-              ),
-            ),
-
-          // ─── LIVE GUIDANCE BOTTOM BAR (Floating Card above Bottom Nav) ───
-          if (_isLiveGuiding && _navDestinationPharmacy != null)
-            Positioned(
-              bottom: 12 + bottomInset,
-              left: 14,
-              right: 14,
-              child: RepaintBoundary(
-                child: _buildLiveNavigationBottomBar(),
-              ),
-            ),
-
-          // ─── IN-APP NAVIGATION PREVIEW PANEL (Before "Démarrer") ───
-          if (!_isListView && !_isLiveGuiding && _isNavigating && _navDestinationPharmacy != null)
-            Positioned(
-              bottom: 14 + bottomInset,
-              left: 14,
-              right: 14,
-              child: RepaintBoundary(
-                child: _buildInAppRouteBottomCard(),
+              child: FloatingActionButton.small(
+                heroTag: 'fab_user_location',
+                onPressed: _flyToUserLocation,
+                backgroundColor: Colors.white,
+                foregroundColor: AppColors.forestGreen,
+                elevation: 4,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                child: const Icon(LucideIcons.crosshair, size: 20),
               ),
             ),
 
           // ─── SELECTED PHARMACY BOTTOM PREVIEW CARD ───
-          if (!_isListView && !_isNavigating && !_isLiveGuiding && _selectedPharmacy != null)
+          if (!_isListView && _selectedPharmacy != null)
             Positioned(
               bottom: 14 + bottomInset,
               left: 14,
@@ -1344,7 +795,7 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
             ),
 
           // ─── INITIAL LOADING OVERLAY (Finding user location & 20 closest pharmacies) ───
-          if (_isInitialLocating && provider.isLoading)
+          if (_isInitialLocating)
             Positioned.fill(
               child: Container(
                 color: Colors.white.withValues(alpha: 0.90),
@@ -1407,249 +858,10 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
               onTap: _onBottomNavTapped,
             )
           : null,
-    );
+    ),
+  );
   }
 
-  // ─── TOP LIVE NAVIGATION BANNER (Dark Emerald Green - Google Maps Style) ───
-  Widget _buildLiveNavigationTopBanner(double topPadding) {
-    final step = (_currentRouteInfo != null &&
-            _currentRouteInfo!.stepDetails.isNotEmpty &&
-            _currentStepIndex < _currentRouteInfo!.stepDetails.length)
-        ? _currentRouteInfo!.stepDetails[_currentStepIndex]
-        : null;
-
-    final nextStep = (_currentRouteInfo != null &&
-            _currentRouteInfo!.stepDetails.length > _currentStepIndex + 1)
-        ? _currentRouteInfo!.stepDetails[_currentStepIndex + 1]
-        : null;
-
-    final mainTarget = step?.streetName.isNotEmpty == true
-        ? 'vers ${step!.streetName}'
-        : 'vers ${_navDestinationPharmacy?.nomPharmacie ?? "Destination"}';
-
-    IconData maneuverIcon = LucideIcons.arrowUp;
-    if (step != null) {
-      if (step.modifier.contains('left')) {
-        maneuverIcon = LucideIcons.cornerUpLeft;
-      } else if (step.modifier.contains('right')) {
-        maneuverIcon = LucideIcons.cornerUpRight;
-      } else if (step.type.contains('roundabout')) {
-        maneuverIcon = LucideIcons.refreshCcw;
-      }
-    }
-
-    return Container(
-      padding: EdgeInsets.fromLTRB(16, topPadding + 10, 16, 16),
-      decoration: const BoxDecoration(
-        color: Color(0xFF044E3D), // Google Maps dark green
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(22),
-          bottomRight: Radius.circular(22),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black38,
-            blurRadius: 18,
-            offset: Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              // Big Maneuver Icon
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Icon(maneuverIcon, color: Colors.white, size: 34),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      step != null ? step.instruction : mainTarget,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w900,
-                        height: 1.2,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      _navDestinationPharmacy?.nomPharmacie ?? 'Pharmacie',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.8),
-                        fontSize: 12.0,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          if (nextStep != null) ...[
-            const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: const Color(0xFF02382C),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    'Puis ',
-                    style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600),
-                  ),
-                  const Icon(LucideIcons.cornerUpRight, size: 13, color: Colors.white),
-                  const SizedBox(width: 4),
-                  Flexible(
-                    child: Text(
-                      nextStep.streetName.isNotEmpty ? nextStep.streetName : nextStep.instruction,
-                      style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  // ─── LIVE NAVIGATION BOTTOM BAR (Floating Card above Bottom Navigation) ───
-  Widget _buildLiveNavigationBottomBar() {
-    final distStr = _remainingDistanceMeters >= 1000
-        ? '${(_remainingDistanceMeters / 1000.0).toStringAsFixed(1)} km'
-        : '${_remainingDistanceMeters.round()} m';
-    final durationStr = (_remainingDistanceMeters <= 25) || _remainingDurationMin == 0
-        ? '0 min'
-        : '$_remainingDurationMin min';
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: const [
-          BoxShadow(
-            color: Colors.black26,
-            blurRadius: 16,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          // Close / Exit Guidance Button
-          InkWell(
-            onTap: _stopLiveGuiding,
-            borderRadius: BorderRadius.circular(24),
-            child: Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: const Color(0xFFF3F4F6),
-                shape: BoxShape.circle,
-                border: Border.all(color: const Color(0xFFE5E7EB)),
-              ),
-              child: const Icon(LucideIcons.x, size: 20, color: Color(0xFF374151)),
-            ),
-          ),
-          const SizedBox(width: 14),
-
-          // Central Duration & ETA
-          Expanded(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Text(
-                  durationStr,
-                  style: const TextStyle(
-                    fontSize: 21,
-                    fontWeight: FontWeight.w900,
-                    color: Color(0xFF15803D), // Vivid Green
-                  ),
-                ),
-                const SizedBox(height: 1),
-                Text(
-                  '$distStr • $_etaTimeStr',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF4B5563),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 14),
-
-          // Re-center Navigation Button
-          InkWell(
-            onTap: _recenterLiveNavigation,
-            borderRadius: BorderRadius.circular(24),
-            child: Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: const Color(0xFFEFF6FF),
-                shape: BoxShape.circle,
-                border: Border.all(color: const Color(0xFFBFDBFE)),
-              ),
-              child: const Icon(LucideIcons.crosshair, size: 20, color: Color(0xFF2563EB)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLiveActionCircle({
-    required IconData icon,
-    required Color iconColor,
-    Color bgColor = Colors.white,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(25),
-      child: Container(
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          color: bgColor,
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.16),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Icon(icon, color: iconColor, size: 20),
-      ),
-    );
-  }
-
-  // ─── NORMAL HEADER WIDGET ───
   Widget _buildNormalHeader(GardeProvider provider) {
     final auth = context.watch<AuthProvider>();
     final isAuth = auth.isAuthenticated;
@@ -1935,7 +1147,10 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
     required VoidCallback onTap,
   }) {
     return InkWell(
-      onTap: onTap,
+      onTap: () {
+        FocusScope.of(context).unfocus();
+        onTap();
+      },
       borderRadius: BorderRadius.circular(20),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
@@ -1967,327 +1182,6 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  // ─── IN-APP ROUTE HEADER (Route Preview Mode) ───
-  Widget _buildInAppRouteHeader() {
-    final ph = _navDestinationPharmacy!;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.15),
-            blurRadius: 14,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              // Exit Navigation Button
-              InkWell(
-                onTap: _exitInAppRoute,
-                borderRadius: BorderRadius.circular(20),
-                child: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF3F4F6),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Icon(LucideIcons.x, size: 18, color: AppColors.forestGreen),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Itinéraire en direct',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.primaryGreen,
-                        letterSpacing: 0.3,
-                      ),
-                    ),
-                    Text(
-                      ph.nomPharmacie ?? 'Pharmacie',
-                      style: const TextStyle(
-                        fontSize: 14.5,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.forestGreen,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-              if (_isCalculatingRoute)
-                const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.primaryGreen),
-                ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          // Mode Toggle Pills (Driving / Walking)
-          Row(
-            children: [
-              Expanded(
-                child: InkWell(
-                  onTap: () => _toggleTravelMode('driving'),
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    decoration: BoxDecoration(
-                      color: _travelMode == 'driving' ? const Color(0xFF2563EB) : const Color(0xFFF3F4F6),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          LucideIcons.car,
-                          size: 14,
-                          color: _travelMode == 'driving' ? Colors.white : const Color(0xFF4B5563),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          'En voiture',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: _travelMode == 'driving' ? Colors.white : const Color(0xFF4B5563),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: InkWell(
-                  onTap: () => _toggleTravelMode('walking'),
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    decoration: BoxDecoration(
-                      color: _travelMode == 'walking' ? const Color(0xFF2563EB) : const Color(0xFFF3F4F6),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          LucideIcons.footprints,
-                          size: 14,
-                          color: _travelMode == 'walking' ? Colors.white : const Color(0xFF4B5563),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          'À pied',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: _travelMode == 'walking' ? Colors.white : const Color(0xFF4B5563),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ─── IN-APP ROUTE BOTTOM CARD (Google Maps Preview & "Démarrer" button) ───
-  Widget _buildInAppRouteBottomCard() {
-    final ph = _navDestinationPharmacy!;
-    final info = _currentRouteInfo;
-    final double distKm = _remainingDistanceMeters > 0 ? (_remainingDistanceMeters / 1000.0) : (info?.distanceKm ?? 0.0);
-    final String durationStr = (_remainingDistanceMeters <= 25 && _isNavigating) || _remainingDurationMin == 0
-        ? '0 min'
-        : '$_remainingDurationMin min';
-    final String distanceStr = _remainingDistanceMeters < 1000 && _remainingDistanceMeters > 0
-        ? '${_remainingDistanceMeters.round()} m'
-        : '${distKm.toStringAsFixed(1)} km';
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.16),
-            blurRadius: 20,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // Travel Time Badge
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: _travelMode == 'walking' ? const Color(0xFFEFF6FF) : const Color(0xFFDCFCE7),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Text(
-                  durationStr,
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                    color: _travelMode == 'walking' ? const Color(0xFF2563EB) : const Color(0xFF15803D),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Text(
-                          distanceStr,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.forestGreen,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        const Text('•', style: TextStyle(color: Colors.grey)),
-                        const SizedBox(width: 6),
-                        Text(
-                          _travelMode == 'walking' ? 'À pied' : 'Trafic fluide',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: _travelMode == 'walking' ? const Color(0xFF2563EB) : AppColors.primaryGreen,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      ph.adresse?.isNotEmpty == true ? ph.adresse! : 'Destination pharmacie',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          if (info != null && info.steps.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF9FAFB),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFE5E7EB)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(LucideIcons.cornerUpRight, size: 16, color: Color(0xFF2563EB)),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      info.steps.first,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF374151),
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-          const SizedBox(height: 14),
-
-          // Action Buttons: Démarrer Navigation (Google Maps Style) & Appeler & Guidage
-          Row(
-            children: [
-              // Google Maps "Démarrer" Button (Cyan/Green Primary)
-              Expanded(
-                flex: 3,
-                child: ElevatedButton.icon(
-                  onPressed: _startLiveNavigation,
-                  icon: const Icon(LucideIcons.navigation, size: 16),
-                  label: const Text('Démarrer', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13.5)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0F766E), // Google Maps Navigation Cyan/Green
-                    foregroundColor: Colors.white,
-                    elevation: 2,
-                    padding: const EdgeInsets.symmetric(vertical: 11),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              // External GPS button
-              OutlinedButton.icon(
-                onPressed: () => _openExternalGps(ph),
-                icon: const Icon(LucideIcons.externalLink, size: 14),
-                label: const Text('GPS', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFF2563EB),
-                  side: const BorderSide(color: Color(0xFF2563EB), width: 1.2),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-                ),
-              ),
-              const SizedBox(width: 8),
-              // Close Preview
-              ElevatedButton(
-                onPressed: _exitInAppRoute,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFF3F4F6),
-                  foregroundColor: const Color(0xFF4B5563),
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-                ),
-                child: const Text('Quitter', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
-              ),
-            ],
-          ),
-        ],
       ),
     );
   }
@@ -2494,7 +1388,7 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
               Expanded(
                 flex: 2,
                 child: OutlinedButton.icon(
-                  onPressed: () => _startInAppRoute(ph),
+                  onPressed: () => _openGoogleMapsRoute(ph),
                   icon: const Icon(LucideIcons.navigation, size: 14),
                   label: const Text('Itinéraire', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
                   style: OutlinedButton.styleFrom(
@@ -2623,7 +1517,7 @@ class _GardesMapScreenState extends State<GardesMapScreen> {
               ],
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () => _startInAppRoute(ph),
+                  onPressed: () => _openGoogleMapsRoute(ph),
                   icon: const Icon(LucideIcons.navigation, size: 14),
                   label: const Text('Itinéraire', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
                   style: OutlinedButton.styleFrom(

@@ -233,8 +233,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           ),
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-          child: Column(
-            children: [
+          child: SafeArea(
+            top: false,
+            bottom: true,
+            child: Column(
+              children: [
               Container(
                 width: 40,
                 height: 4,
@@ -298,8 +301,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   @override
   Widget build(BuildContext context) {
