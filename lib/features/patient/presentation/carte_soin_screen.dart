@@ -130,53 +130,65 @@ class _CarteSoinScreenState extends State<CarteSoinScreen> {
                 ),
               ),
               const SizedBox(height: 18),
-              // Step / Card
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF9FAFB),
+              // Step / Card (Clickable to navigate to Éducation Thérapeutique)
+              Material(
+                color: const Color(0xFFF9FAFB),
+                borderRadius: BorderRadius.circular(16),
+                child: InkWell(
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    Navigator.pushNamed(context, AppRoutes.educationTherapeutique);
+                  },
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFE5E7EB)),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFDCFCE7),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(LucideIcons.target, color: AppColors.primaryGreen, size: 20),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFE5E7EB)),
                     ),
-                    const SizedBox(width: 12),
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Passez des Quiz',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w800,
-                              color: Color(0xFF1F2937),
-                            ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 38,
+                          height: 38,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFDCFCE7),
+                            borderRadius: BorderRadius.circular(10),
                           ),
-                          SizedBox(height: 4),
-                          Text(
-                            'Accédez à la rubrique Éducation thérapeutique, puis sélectionnez un quiz et répondez aux questions proposées.',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                              color: Color(0xFF6B7280),
-                              height: 1.35,
-                            ),
+                          child: const Icon(LucideIcons.target, color: AppColors.primaryGreen, size: 20),
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Passez des Quiz',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFF1F2937),
+                                ),
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                'Accédez à la rubrique Éducation thérapeutique, puis sélectionnez un quiz et répondez aux questions proposées.',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: Color(0xFF6B7280),
+                                  height: 1.35,
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(width: 8),
+                        const Icon(LucideIcons.chevronRight, size: 20, color: AppColors.primaryGreen),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
               const SizedBox(height: 22),

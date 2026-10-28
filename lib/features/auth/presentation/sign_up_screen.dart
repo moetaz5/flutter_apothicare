@@ -699,24 +699,17 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         // ─── SECTION: IDENTITÉ ───
                         _buildSectionHeader('IDENTITÉ'),
 
-                        // Row: Nom et Prénom + Gouvernorat
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: _buildFormField(
-                                label: 'NOM ET PRÉNOM *',
-                                hint: 'Nom et prénom',
-                                icon: LucideIcons.user,
-                                controller: _nomController,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: _buildGouvernoratDropdown(gouvernoratsList),
-                            ),
-                          ],
+                        // Nom et Prénom
+                        _buildFormField(
+                          label: 'NOM ET PRÉNOM *',
+                          hint: 'Nom et prénom',
+                          icon: LucideIcons.user,
+                          controller: _nomController,
                         ),
+                        const SizedBox(height: 14),
+
+                        // Gouvernorat
+                        _buildGouvernoratDropdown(gouvernoratsList),
                         const SizedBox(height: 14),
 
                         // Date de naissance
@@ -736,61 +729,49 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         // ─── SECTION: CONTACT ───
                         _buildSectionHeader('CONTACT'),
 
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: _buildFormField(
-                                label: 'EMAIL (LOGIN) *',
-                                hint: 'Email',
-                                icon: LucideIcons.mail,
-                                controller: _emailController,
-                                keyboardType: TextInputType.emailAddress,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: _buildFormField(
-                                label: 'TÉLÉPHONE',
-                                hint: 'Téléphone',
-                                icon: LucideIcons.phone,
-                                controller: _telController,
-                                keyboardType: TextInputType.phone,
-                              ),
-                            ),
-                          ],
+                        // Email
+                        _buildFormField(
+                          label: 'EMAIL (LOGIN) *',
+                          hint: 'Email',
+                          icon: LucideIcons.mail,
+                          controller: _emailController,
+                          keyboardType: TextInputType.emailAddress,
+                        ),
+                        const SizedBox(height: 14),
+
+                        // Téléphone
+                        _buildFormField(
+                          label: 'TÉLÉPHONE',
+                          hint: 'Téléphone',
+                          icon: LucideIcons.phone,
+                          controller: _telController,
+                          keyboardType: TextInputType.phone,
                         ),
 
                         // ─── SECTION: MOT DE PASSE ───
                         _buildSectionHeader('MOT DE PASSE'),
 
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: _buildFormField(
-                                label: 'MOT DE PASSE *',
-                                hint: 'Mot de passe',
-                                icon: LucideIcons.lock,
-                                controller: _passwordController,
-                                isPassword: true,
-                                obscureText: _obscurePassword,
-                                onTogglePassword: () => setState(() => _obscurePassword = !_obscurePassword),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: _buildFormField(
-                                label: 'CONFIRMER *',
-                                hint: 'Confirmer',
-                                icon: LucideIcons.lock,
-                                controller: _confirmPasswordController,
-                                isPassword: true,
-                                obscureText: _obscureConfirmPassword,
-                                onTogglePassword: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
-                              ),
-                            ),
-                          ],
+                        // Mot de passe
+                        _buildFormField(
+                          label: 'MOT DE PASSE *',
+                          hint: 'Mot de passe',
+                          icon: LucideIcons.lock,
+                          controller: _passwordController,
+                          isPassword: true,
+                          obscureText: _obscurePassword,
+                          onTogglePassword: () => setState(() => _obscurePassword = !_obscurePassword),
+                        ),
+                        const SizedBox(height: 14),
+
+                        // Confirmer mot de passe
+                        _buildFormField(
+                          label: 'CONFIRMER *',
+                          hint: 'Confirmer',
+                          icon: LucideIcons.lock,
+                          controller: _confirmPasswordController,
+                          isPassword: true,
+                          obscureText: _obscureConfirmPassword,
+                          onTogglePassword: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
                         ),
                         const SizedBox(height: 18),
 
